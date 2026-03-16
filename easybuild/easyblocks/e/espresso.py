@@ -26,8 +26,9 @@ from easybuild.easyblocks.generic.cmakeninja import CMakeNinja
 from easybuild.tools.systemtools import get_cpu_architecture, get_cpu_features
 from easybuild.tools.systemtools import X86_64
 from easybuild.tools.utilities import trace_msg
-from easybuild.tools.build_log import print_error
+from easybuild.tools.build_log import EasyBuildError, print_error
 from easybuild.tools.filetools import remove_file, remove_dir
+from easybuild.tools.modules import get_software_root
 from easybuild.tools import LooseVersion
 
 
@@ -47,14 +48,17 @@ class EB_ESPResSo(CMakeNinja):
                 continue
             # process dependencies
             tarball = src['name']
-            if not tarball.endswith('.tar.gz'):
-                raise ValueError(tarball + ' is not a tar.gz file')
-            prefix = tarball.rsplit('.', 2)[0]
-            matches = [x for x in os.listdir(src['finalpath']) if x.startswith(prefix)]
+            if tarball.endswith(('.tar.bz2', '.tar.gz', '.tar.xz', '.tar.lz', '.tar.lz4', '.tar.Z')):
+                prefix = tarball.rsplit('.', 2)[0]
+            elif tarball.endswith(('.zip', '.7z', '.tar')):
+                prefix = tarball.rsplit('.', 1)[0]
+            else:
+                raise EasyBuildError(f'unexpected archive/compression format: {tarball}')
+            matches = [x for x in os.listdir(src['finalpath']) if x.lower().startswith(prefix.lower())]
             if len(matches) == 0:
-                raise RuntimeError(tarball + ' was not extracted')
+                raise EasyBuildError(f'{tarball} was not extracted')
             if len(matches) > 1:
-                raise RuntimeError(tarball + ' matches multiple folders: ' + str(matches))
+                raise EasyBuildError(f'{tarball} matches multiple folders: {matches}')
             extracted_paths[name] = os.path.join(src['finalpath'], matches[0])
         return extracted_paths
 
@@ -65,7 +69,10 @@ class EB_ESPResSo(CMakeNinja):
         This avoids a download step during configuration.
         """
         extracted_paths = self._get_extracted_tarball_paths()
-        cmakelists_path = os.path.join(extracted_paths['espresso'], 'CMakeLists.txt')
+        if 'espresso' in extracted_paths.keys():
+            cmakelists_path = os.path.join(extracted_paths['espresso'], 'CMakeLists.txt')
+        else:
+            raise EasyBuildError(f"espresso not found in extracted_paths dict: {extracted_paths}")
         with open(cmakelists_path, 'r') as f:
             content = f.read()
         for name, local_uri in extracted_paths.items():
@@ -74,7 +81,7 @@ class EB_ESPResSo(CMakeNinja):
             pattern = fr'FetchContent_Declare\(\s*{name}\s+GIT_REPOSITORY\s+\S+\s+GIT_TAG\s+\S+(?=\s|\))'
             m = re.search(pattern, content, flags=re.IGNORECASE)
             if m is None:
-                raise RuntimeError(f'{name} is not part of the ESPResSo FetchContent workflow')
+                raise EasyBuildError(f'{name} is not part of the ESPResSo FetchContent workflow')
             content = re.sub(pattern, f'FetchContent_Declare({name} URL {local_uri}', content, flags=re.IGNORECASE)
         with open(cmakelists_path, 'w') as f:
             f.write(content)
@@ -87,48 +94,26 @@ class EB_ESPResSo(CMakeNinja):
         return version
 
     def _configure_step_release_420(self):
-        configopts = self.cfg.get('configopts', '')
-        dependencies = self.cfg.dependencies()
-        dependencies_names = {x.get('name', '') for x in dependencies}
-
-        def cmake_if_has(name):
-            return 'ON' if name in dependencies_names else 'OFF'
-
-        configopts += f' -DWITH_CUDA={cmake_if_has("CUDA")}'
-        configopts += f' -DWITH_GSL={cmake_if_has("GSL")}'
-        configopts += ' -DWITH_FFTW=ON'
-        configopts += ' -DWITH_PYTHON=ON'
-        configopts += ' -DWITH_SCAFACOS=OFF'
-        configopts += ' -DWITH_STOKESIAN_DYNAMICS=OFF'
-        configopts += ' -DWITH_TESTS=ON'
-
-        self.cfg['configopts'] = configopts
+        for dep in ['CUDA', 'GSL', 'FFTW', 'PYTHON', 'SCAFACOS']:
+            dep_flag = 'OFF'
+            if get_software_root(dep):
+                dep_flag = 'ON'
+            self.cfg.update('configopts', f"-DWITH_{dep.upper()}={dep_flag}")
+        self.cfg.update('configopts', ' -DWITH_STOKESIAN_DYNAMICS=OFF')
+        self.cfg.update('configopts', ' -DWITH_TESTS=ON')
 
     def _configure_step_release_500(self):
-        configopts = self.cfg.get('configopts', '')
-        dependencies = self.cfg.dependencies()
-        dependencies_names = {x.get('name', '') for x in dependencies}
-
-        def cmake_if_has(name):
-            return 'ON' if name in dependencies_names else 'OFF'
-
         cpu_features = get_cpu_features()
-
-        configopts += f' -DESPRESSO_BUILD_WITH_CUDA={cmake_if_has("CUDA")}'
-        configopts += f' -DESPRESSO_BUILD_WITH_HDF5={cmake_if_has("HDF5")}'
-        configopts += f' -DESPRESSO_BUILD_WITH_GSL={cmake_if_has("GSL")}'
-        configopts += f' -DESPRESSO_BUILD_WITH_NLOPT={cmake_if_has("NLopt")}'
-        configopts += ' -DESPRESSO_BUILD_WITH_SHARED_MEMORY_PARALLELISM=ON'
-        configopts += ' -DESPRESSO_BUILD_WITH_WALBERLA=ON'
+        for dep in ['CUDA', 'GSL', 'FFTW', 'PYTHON', 'SCAFACOS', 'HDF5', 'NLOPT']:
+            dep_flag = 'OFF'
+            if get_software_root(dep):
+                dep_flag = 'ON'
+            self.cfg.update('configopts', f"-DESPRESSO_BUILD_WITH_{dep.upper()}={dep_flag}")
+        self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_STOKESIAN_DYNAMICS=OFF')
+        self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_WALBERLA=ON')
         if get_cpu_architecture() == X86_64 and 'avx2' in cpu_features:
-            configopts += ' -DESPRESSO_BUILD_WITH_WALBERLA_AVX=ON'
-        configopts += ' -DESPRESSO_BUILD_WITH_FFTW=ON'
-        configopts += ' -DESPRESSO_BUILD_WITH_PYTHON=ON'
-        configopts += ' -DESPRESSO_BUILD_WITH_SCAFACOS=OFF'
-        configopts += ' -DESPRESSO_BUILD_WITH_STOKESIAN_DYNAMICS=OFF'
-        configopts += ' -DESPRESSO_BUILD_TESTS=ON '
-
-        self.cfg['configopts'] = configopts
+            self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_WALBERLA_AVX=ON')
+        self.cfg.update('configopts', ' -DESPRESSO_BUILD_TESTS=ON')
 
     def configure_step(self):
         # patch FetchContent to avoid re-downloading dependencies
@@ -142,7 +127,7 @@ class EB_ESPResSo(CMakeNinja):
         elif version[:2] >= (4, 2):
             self._configure_step_release_420()
         else:
-            raise NotImplementedError(
+            raise EasyBuildError(
                 f'EasyBlock {self.__class__.__name__} doesn\'t implement the '
                 f'configure step for ESPResSo {self.version}')
 
