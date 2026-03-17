@@ -84,11 +84,8 @@ class ROCmComponent(CMakeMake):
             # RPATH wrappers are put in place only for the default toolchain. If we're using different compilers to
             # build this RocmComponent, we have to put the RPATH wrappers in place here, in the easyblock
             if build_option('rpath'):
-                tmp_toolchain = Clang(name='Clang', version='1')
-                if self.cfg['compiler_toolchain'] == TOOLCHAIN_ROCM_LLVM:
-                    tmp_toolchain.COMPILER_CC = 'amdclang'
-                    tmp_toolchain.COMPILER_CXX = 'amdclang++'
-                elif self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
+                tmp_toolchain = ROCmCompilersToolchain(name='ROCmCompilersToolchain', version='1')
+                if self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
                     tmp_toolchain.COMPILER_CC = 'hipcc'
                     tmp_toolchain.COMPILER_CXX = 'hipcc'
                 tmp_toolchain.prepare_rpath_wrappers()
