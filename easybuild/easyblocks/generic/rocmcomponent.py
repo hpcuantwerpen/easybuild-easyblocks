@@ -90,6 +90,13 @@ class ROCmComponent(CMakeMake):
                     tmp_toolchain.COMPILER_CXX = 'hipcc'
                 tmp_toolchain.prepare_rpath_wrappers()
 
+                # RPATH wrappers add -Wl,rpath arguments to all command lines, including when it is just compiling
+                # Clang by default warns about that, and then some configure tests use -Werror which turns those
+                # warnings into errors. As a result, those configure tests fail, even though the compiler supports the
+                # requested functionality (e.g. the test that checks if -fPIC is supported would fail, and it compiles
+                # without resulting in relocation errors).
+                # See https://github.com/easybuilders/easybuild-easyblocks/pull/2799#issuecomment-1270621100
+                # Here, we add -Wno-unused-command-line-argument to CXXFLAGS to avoid these warnings alltogether
                 cflags = os.getenv('CFLAGS', '')
                 cxxflags = os.getenv('CXXFLAGS', '')
                 setvar('CFLAGS', "%s %s" % (cflags, '-Wno-unused-command-line-argument'))
