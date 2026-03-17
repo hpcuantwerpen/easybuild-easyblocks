@@ -103,7 +103,7 @@ class ROCmComponent(CMakeMake):
                 # tmp_toolchain.COMPILER_F90 = 'hipfc'
                 # tmp_toolchain.COMPILER_FC = 'hipfc'
             elif self.cfg['compiler_toolchain'] == TOOLCHAIN_LLVM:
-                llvm_root = get_software_root('ROCm-LLVM')
+                llvm_root = get_software_root('LLVM')
                 if not llvm_root:
                     raise EasyBuildError(f"LLVM is required to build {self.cfg.name}")
                 tmp_toolchain = Clang(name='Clang', version='1')
