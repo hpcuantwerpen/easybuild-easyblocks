@@ -32,7 +32,7 @@ import os
 
 from easybuild.framework.easyconfig import CUSTOM
 from easybuild.easyblocks.generic.cmakemake import CMakeMake
-from easybuild.toolchains.compiler.clang import Clang
+from easybuild.toolchains.compiler.rocm_compilers import ROCmCompilers
 from easybuild.tools.build_log import EasyBuildError
 from easybuild.tools.config import build_option
 from easybuild.tools.filetools import which
@@ -84,7 +84,7 @@ class ROCmComponent(CMakeMake):
             # RPATH wrappers are put in place only for the default toolchain. If we're using different compilers to
             # build this RocmComponent, we have to put the RPATH wrappers in place here, in the easyblock
             if build_option('rpath'):
-                tmp_toolchain = ROCmCompilersToolchain(name='ROCmCompilersToolchain', version='1')
+                tmp_toolchain = ROCmCompilers(name='ROCmCompilers', version='1')
                 if self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
                     tmp_toolchain.COMPILER_CC = 'hipcc'
                     tmp_toolchain.COMPILER_CXX = 'hipcc'
@@ -96,8 +96,8 @@ class ROCmComponent(CMakeMake):
                 setvar('CXXFLAGS', "%s %s" % (cxxflags, '-Wno-unused-command-line-argument'))
 
             if self.cfg['compiler_toolchain'] == TOOLCHAIN_ROCM_LLVM:
-                amdclang_mock = which('clang')
-                amdclangxx_mock = which('clang++')
+                amdclang_mock = which('amdclang')
+                amdclangxx_mock = which('amdclang++')
             elif self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
                 amdclang_mock = which('hipcc')
                 amdclangxx_mock = which('hipcc')
