@@ -81,6 +81,11 @@ class ROCmComponent(CMakeMake):
         else:
             raise EasyBuildError("hip_platform parameter contains non-allowed value.")
 
+        # Allow the EasyConfig with a non-native toolchain. This is only really useful if one
+        # wants to build the EasyConfig with ROCm-LLVM / LLVM and place the result still in e.g.
+        # GCCcore.
+        # Another usecase is software requiring 'hipcc' to build, with it being used as their C++
+        # compiler.
         if self.cfg['compiler_toolchain'] != TOOLCHAIN_DEFAULT:
             # Determine which compilers to use instead. Make sure that they are actually available.
             # Check for the modules they should be located in.
@@ -103,6 +108,9 @@ class ROCmComponent(CMakeMake):
                 # tmp_toolchain.COMPILER_F90 = 'hipfc'
                 # tmp_toolchain.COMPILER_FC = 'hipfc'
             elif self.cfg['compiler_toolchain'] == TOOLCHAIN_LLVM:
+                # This is meant to represent a vanilla LLVM, not the adapted ROCm-LLVM.
+                # Especially important if one builds ROCm components with CUDA support, which
+                # does not require any ROCm-LLVM components.
                 llvm_root = get_software_root('LLVM')
                 if not llvm_root:
                     raise EasyBuildError(f"LLVM is required to build {self.cfg.name}")
