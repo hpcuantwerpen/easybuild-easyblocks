@@ -89,7 +89,7 @@ class ROCmComponent(CMakeMake):
                 if not rocm_llvm_root:
                     raise EasyBuildError(f"ROCm-LLVM is required to build {self.cfg.name}")
                 tmp_toolchain = ROCmCompilers(name='ROCmCompilers', version='1')
-            if self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
+            elif self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
                 hip_root = get_software_root('HIP')
                 if not hip_root:
                     raise EasyBuildError(f"HIP is required to build {self.cfg.name} with hipcc / hipfc")
@@ -107,6 +107,8 @@ class ROCmComponent(CMakeMake):
                 if not llvm_root:
                     raise EasyBuildError(f"LLVM is required to build {self.cfg.name}")
                 tmp_toolchain = Clang(name='Clang', version='1')
+            else:
+                raise EasyBuildError(f"Unknown compiler toolchain {self.cfg['compiler_toolchain']}")
 
             # RPATH wrappers are put in place only for the default toolchain. If we're using different compilers to
             # build this RocmComponent, we have to put the RPATH wrappers in place here, in the easyblock
