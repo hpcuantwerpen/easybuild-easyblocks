@@ -1,5 +1,5 @@
 ##
-# Copyright 2009-2025 Ghent University
+# Copyright 2009-2026 Ghent University
 #
 # This file is part of EasyBuild,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -32,6 +32,7 @@ import os
 
 from easybuild.framework.easyconfig import CUSTOM
 from easybuild.easyblocks.generic.cmakemake import CMakeMake
+from easybuild.toolchains.compiler.clang import Clang
 from easybuild.toolchains.compiler.rocm_compilers import ROCmCompilers
 from easybuild.tools.build_log import EasyBuildError
 from easybuild.tools.config import build_option
@@ -81,13 +82,35 @@ class ROCmComponent(CMakeMake):
             raise EasyBuildError("hip_platform parameter contains non-allowed value.")
 
         if self.cfg['compiler_toolchain'] != TOOLCHAIN_DEFAULT:
+            # Determine which compilers to use instead. Make sure that they are actually available.
+            # Check for the modules they should be located in.
+            if self.cfg['compiler_toolchain'] == TOOLCHAIN_ROCM_LLVM:
+                rocm_llvm_root = get_software_root('ROCm-LLVM')
+                if not rocm_llvm_root:
+                    raise EasyBuildError(f"ROCm-LLVM is required to build {self.cfg.name}")
+                tmp_toolchain = ROCmCompilers(name='ROCmCompilers', version='1')
+            if self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
+                hip_root = get_software_root('HIP')
+                if not hip_root:
+                    raise EasyBuildError(f"HIP is required to build {self.cfg.name} with hipcc / hipfc")
+                tmp_toolchain = ROCmCompilers(name='ROCmCompilers', version='1')
+                tmp_toolchain.COMPILER_CC = 'hipcc'
+                tmp_toolchain.COMPILER_CXX = 'hipcc'
+                # TODO: Add compiler wrappers for Fortran via hipfc once EasyConfigs are available.
+                # hipfc needs basically all math libraries for proper support.
+                # For now, fall back to amdflang.
+                # tmp_toolchain.COMPILER_F77 = 'hipfc'
+                # tmp_toolchain.COMPILER_F90 = 'hipfc'
+                # tmp_toolchain.COMPILER_FC = 'hipfc'
+            elif self.cfg['compiler_toolchain'] == TOOLCHAIN_LLVM:
+                llvm_root = get_software_root('ROCm-LLVM')
+                if not llvm_root:
+                    raise EasyBuildError(f"LLVM is required to build {self.cfg.name}")
+                tmp_toolchain = Clang(name='Clang', version='1')
+
             # RPATH wrappers are put in place only for the default toolchain. If we're using different compilers to
             # build this RocmComponent, we have to put the RPATH wrappers in place here, in the easyblock
             if build_option('rpath'):
-                tmp_toolchain = ROCmCompilers(name='ROCmCompilers', version='1')
-                if self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
-                    tmp_toolchain.COMPILER_CC = 'hipcc'
-                    tmp_toolchain.COMPILER_CXX = 'hipcc'
                 tmp_toolchain.prepare_rpath_wrappers()
 
                 # RPATH wrappers add -Wl,rpath arguments to all command lines, including when it is just compiling
@@ -102,16 +125,15 @@ class ROCmComponent(CMakeMake):
                 setvar('CFLAGS', "%s %s" % (cflags, '-Wno-unused-command-line-argument'))
                 setvar('CXXFLAGS', "%s %s" % (cxxflags, '-Wno-unused-command-line-argument'))
 
-            if self.cfg['compiler_toolchain'] == TOOLCHAIN_ROCM_LLVM:
-                amdclang_mock = which('amdclang')
-                amdclangxx_mock = which('amdclang++')
-            elif self.cfg['compiler_toolchain'] == TOOLCHAIN_HIPCC:
-                amdclang_mock = which('hipcc')
-                amdclangxx_mock = which('hipcc')
+            mock_cc = which(tmp_toolchain.COMPILER_CC)
+            mock_cxx = which(tmp_toolchain.COMPILER_CXX)
+            mock_fc = which(tmp_toolchain.COMPILER_FC)
+            mock_hip = which(tmp_toolchain.COMPILER_CXX)
 
-            self.cfg['configopts'] += f'-DCMAKE_C_COMPILER={amdclang_mock} '
-            self.cfg['configopts'] += f'-DCMAKE_CXX_COMPILER={amdclangxx_mock} '
-            self.cfg['configopts'] += f'-DCMAKE_HIP_COMPILER={amdclangxx_mock} '
+            self.cfg['configopts'] += f'-DCMAKE_C_COMPILER={mock_cc} '
+            self.cfg['configopts'] += f'-DCMAKE_CXX_COMPILER={mock_cxx} '
+            self.cfg['configopts'] += f'-DCMAKE_HIP_COMPILER={mock_hip} '
+            self.cfg['configopts'] += f'-DCMAKE_Fortran_COMPILER={mock_fc} '
 
         self.cfg['configopts'] += f'-DHIP_PLATFORM={self.cfg["hip_platform"]} '
         amd_gfx_list = build_option('amdgcn_capabilities') or self.cfg['amdgcn_capabilities'] or []
