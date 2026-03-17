@@ -81,6 +81,8 @@ class ROCmComponent(CMakeMake):
             raise EasyBuildError("hip_platform parameter contains non-allowed value.")
 
         if self.cfg['compiler_toolchain'] != TOOLCHAIN_DEFAULT:
+            # RPATH wrappers are put in place only for the default toolchain. If we're using different compilers to
+            # build this RocmComponent, we have to put the RPATH wrappers in place here, in the easyblock
             if build_option('rpath'):
                 tmp_toolchain = Clang(name='Clang', version='1')
                 if self.cfg['compiler_toolchain'] == TOOLCHAIN_ROCM_LLVM:
