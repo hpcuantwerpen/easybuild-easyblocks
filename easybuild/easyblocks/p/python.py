@@ -225,6 +225,10 @@ def run_pip_check(python_cmd=None, **kwargs):
 
 
 def normalize_pip(name):
+    """
+    Normalize pip package name according to
+    https://packaging.python.org/en/latest/specifications/name-normalization/
+    """
     return REGEX_PIP_NORMALIZE.sub("-", name).lower()
 
 
@@ -415,6 +419,8 @@ class EB_Python(ConfigureMake):
             'pip_ignore_installed': False,
             # disable per-extension 'pip check', since it's a global check done in sanity check step of Python easyblock
             'sanity_pip_check': False,
+            # disable per-extension 'pip list', since it's a global check done in sanity check step of Python easyblock
+            'sanity_check_pip_list': False,
             # EasyBuild 5
             'use_pip': True,
         }

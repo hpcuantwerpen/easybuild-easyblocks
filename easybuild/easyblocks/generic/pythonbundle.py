@@ -202,6 +202,7 @@ class PythonBundle(Bundle):
         super()._sanity_check_step_extensions()
 
         sanity_pip_check = self.cfg['sanity_pip_check']
+        sanity_check_pip_list = self.cfg['sanity_check_pip_list']
         unversioned_packages = set(self.cfg['unversioned_packages'])
 
         # The options should be set in the main EC and cannot be different between extensions.
@@ -212,25 +213,34 @@ class PythonBundle(Bundle):
 
         mismatched_params = set()
 
+        params = {
+            'sanity_pip_check': sanity_pip_check,
+            'sanity_check_pip_list': sanity_check_pip_list,
+        }
+
         for ext in py_exts:
-            if ext.cfg['sanity_pip_check'] != sanity_pip_check:
-                mismatched_params.add('sanity_pip_check')
+            for param, value in params.items():
+                if ext.cfg[param] != value:
+                    mismatched_params.add(param)
             all_unversioned_packages.update(ext.cfg['unversioned_packages'])
 
-        if 'sanity_pip_check' in mismatched_params:
-            sanity_pip_check = True  # Either the main set it or any extension enabled it
+        for param in params:
+            if param in mismatched_params:
+                params[param] = True  # Either the main set it or any extension enabled it
 
         if all_unversioned_packages != unversioned_packages:
             mismatched_params.add('unversioned_packages')
 
-        for param in mismatched_params:
-            msg = (f"For bundles of PythonPackage extensions the {param} parameter "
+        for mismatch in mismatched_params:
+            msg = (f"For bundles of PythonPackage extensions the {mismatch} parameter "
                    "must be set at the top level, outside of exts_list")
             self.log.deprecated(msg, '6.0')
 
-        if sanity_pip_check:
+        if params['sanity_pip_check']:
             run_pip_check(python_cmd=self.python_cmd)
             pkgs = [(x.name, x.version) for x in py_exts]
+
+        if params['sanity_check_pip_list']:
             run_pip_list(pkgs, python_cmd=self.python_cmd, unversioned_packages=all_unversioned_packages)
 
     def make_module_footer(self):

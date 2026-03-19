@@ -505,14 +505,15 @@ class PythonPackage(ExtensionEasyBlock):
             'max_py_majver': [None, "Maximum major Python version (only relevant when using system Python)", CUSTOM],
             'max_py_minver': [None, "Maximum minor Python version (only relevant when using system Python)", CUSTOM],
             'sanity_pip_check': [True, "Run 'python -m pip check' to ensure all required Python packages are "
-                                       "installed and run 'python -m pip list' to check for correct package names and "
-                                       "versions or any package with an invalid (0.0.0) version.", CUSTOM],
+                                       "installed.", CUSTOM],
+            'sanity_check_pip_list': [None, "Run 'python -m pip list' to ensure specified package names and versions "
+                                            "are correct.", CUSTOM],
             'runtest': [True, "Run unit tests.", CUSTOM],  # overrides default
             'testinstall': [False, "Install into temporary directory prior to running the tests.", CUSTOM],
             'unpack_sources': [None, "Unpack sources prior to build/install. Defaults to 'True' except for whl files",
                                CUSTOM],
             # A version of 0.0.0 is usually an error on installation unless the package does really not provide a
-            # version. Those would fail the (extended) sanity_pip_check. So as a last resort they can be added here
+            # version. Those would fail the sanity_check_pip_list. So as a last resort they can be added here
             # and will be excluded from that check. Note that the display name is required, i.e. from `pip list`.
             'unversioned_packages': [[], "List of packages that don't have a version at all, i.e. show 0.0.0", CUSTOM],
             'use_pip': [True, "Install using '%s'" % PIP_INSTALL_CMD, CUSTOM],
@@ -1200,6 +1201,8 @@ class PythonPackage(ExtensionEasyBlock):
         self.cfg.template_values['python'] = python_cmd
 
         sanity_pip_check = self.cfg.get('sanity_pip_check', True)
+        sanity_check_pip_list = self.cfg.get('sanity_check_pip_list')
+
         if self.is_extension:
             sanity_pip_check_main = self.master.cfg.get('sanity_pip_check')
             if sanity_pip_check_main is not None:
@@ -1207,8 +1210,15 @@ class PythonPackage(ExtensionEasyBlock):
                 # we trust it does the pip check if requested and checks for mismatches
                 sanity_pip_check = False
                 self.log.info(f"'sanity_pip_check' disabled for {self.name} extension, "
-                              f"assuming that parent will take care of it"
-                              )
+                              f"assuming that parent will take care of it")
+
+            sanity_check_pip_list_main = self.master.cfg.get('sanity_check_pip_list')
+            if sanity_check_pip_list_main is not None:
+                # If the main easyblock (e.g. PythonBundle) defines the variable
+                # we trust it does the pip list if requested and checks for mismatches
+                sanity_check_pip_list = False
+                self.log.info(f"'sanity_check_pip_list' disabled for {self.name} extension, "
+                              f"assuming that parent will take care of it")
 
         if sanity_pip_check:
             if not self.is_extension:
@@ -1221,9 +1231,17 @@ class PythonPackage(ExtensionEasyBlock):
                     self.log.debug("Currently loaded modules: %s", loaded_modules)
                     raise EasyBuildError("%s module is not loaded, this should never happen...",
                                          self.short_mod_name)
-
-            unversioned_packages = self.cfg.get('unversioned_packages', [])
             run_pip_check(python_cmd=python_cmd)
+
+        if sanity_check_pip_list is None:
+            # by default only run 'pip list' sanity check if --upload-test-report is set
+            if build_option('upload_test_report'):
+                sanity_check_pip_list = True
+            else:
+                sanity_check_pip_list = False
+
+        if sanity_check_pip_list:
+            unversioned_packages = self.cfg.get('unversioned_packages', [])
             run_pip_list([(self.name, self.version)], python_cmd=python_cmd, unversioned_packages=unversioned_packages)
 
         # ExtensionEasyBlock handles loading modules correctly for multi_deps, so we clean up fake_mod_data
