@@ -183,19 +183,19 @@ def run_pip_check(python_cmd=None, **kwargs):
     """
     Check installed Python packages using 'pip check'
 
-    :param unversioned_packages: set of Python packages to exclude in the version existence check
     :param python_cmd: Python command to use (if None, 'python' is used)
     """
     log = fancylogger.getLogger('run_pip_check', fname=False)
 
     kwargs_keys = kwargs.keys()
     if 'unversioned_packages' in kwargs_keys:
-        msg = "Parameter `unversioned_packages` is no longer supported."
+        msg = ("Parameter `unversioned_packages` is no longer supported in `run_pip_check` "
+               "and has been moved to `run_pip_list`.")
         log.deprecated(msg, '6.0')
         kwargs_keys -= {'unversioned_packages'}
 
     if kwargs_keys:
-        raise EasyBuildError(f'Parameter(s) {kwargs_keys} are not allowed.')
+        raise EasyBuildError(f'Parameter(s) {kwargs_keys} are not supported in `run_pip_check`.')
 
     if python_cmd is None:
         python_cmd = 'python'
@@ -237,6 +237,8 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None):
     Run pip list to verify normalized names and versions of installed Python packages
 
     :param pkgs: list of package tuples (name, version) as specified in the easyconfig
+    :param python_cmd: Python command to use (if None, 'python' is used)
+    :param unversioned_packages: set of Python packages to exclude in the version existence check
     """
 
     log = fancylogger.getLogger('run_pip_list', fname=False)
@@ -268,7 +270,7 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None):
     else:
         normalized_unversioned = set()
 
-    # Create normalized name -> version mapping from the pip list output
+    # Create normalized name: version mapping from pip list output
     normalized_pip_pkgs = {normalize_pip(x['name']): x['version'] for x in pip_pkgs_dict}
 
     # Check for packages that likely were not installed correctly (version '0.0.0'), excluding packages that are listed
