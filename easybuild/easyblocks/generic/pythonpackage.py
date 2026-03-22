@@ -513,7 +513,7 @@ class PythonPackage(ExtensionEasyBlock):
             'unpack_sources': [None, "Unpack sources prior to build/install. Defaults to 'True' except for whl files",
                                CUSTOM],
             # A version of 0.0.0 is usually an error on installation unless the package does really not provide a
-            # version. Those would fail the sanity_check_pip_list. So as a last resort they can be added here
+            # version. Those would fail the (extended) sanity_pip_check. So as a last resort they can be added here
             # and will be excluded from that check. Note that the display name is required, i.e. from `pip list`.
             'unversioned_packages': [[], "List of packages that don't have a version at all, i.e. show 0.0.0", CUSTOM],
             'use_pip': [True, "Install using '%s'" % PIP_INSTALL_CMD, CUSTOM],
