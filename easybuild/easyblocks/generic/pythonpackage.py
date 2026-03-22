@@ -505,7 +505,7 @@ class PythonPackage(ExtensionEasyBlock):
             'max_py_majver': [None, "Maximum major Python version (only relevant when using system Python)", CUSTOM],
             'max_py_minver': [None, "Maximum minor Python version (only relevant when using system Python)", CUSTOM],
             'sanity_pip_check': [True, "Run 'python -m pip check' to ensure all required Python packages are "
-                                       "installed.", CUSTOM],
+                                       "installed and check for any package with an invalid (0.0.0) version.", CUSTOM],
             'sanity_check_pip_list': [None, "Run 'python -m pip list' to ensure specified package names and versions "
                                             "are correct.", CUSTOM],
             'runtest': [True, "Run unit tests.", CUSTOM],  # overrides default
@@ -521,7 +521,7 @@ class PythonPackage(ExtensionEasyBlock):
             # see https://packaging.python.org/tutorials/installing-packages/#installing-setuptools-extras
             'use_pip_extras': [None, "String with comma-separated list of 'extras' to install via pip", CUSTOM],
             'use_pip_for_deps': [False, "Install dependencies using '%s'" % PIP_INSTALL_CMD, CUSTOM],
-            'use_pip_requirement': [False, "Install using 'python -m pip install --requirement'. The sources is " +
+            'use_pip_requirement': [False, "Install using 'python -m pip install --requirement'. The sources is "
                                            "expected to be the requirements file.", CUSTOM],
             'zipped_egg': [False, "Install as a zipped eggs", CUSTOM],
         })
@@ -1012,8 +1012,8 @@ class PythonPackage(ExtensionEasyBlock):
                 # Requires having the installation in place to work correctly, since no path configuration files
                 # will be found otherwise
                 if self.should_use_ebpythonprefixes():
-                    extrapath += "export EBPYTHONPREFIXES=%s && " % os.pathsep.join([self.pypkg_test_installdir] +
-                                                                                    ['$EBPYTHONPREFIXES'])
+                    extrapath += "export EBPYTHONPREFIXES=%s && " % os.pathsep.join([self.pypkg_test_installdir]
+                                                                                    + ['$EBPYTHONPREFIXES'])
             if self.testcmd:
                 testcmd = self.testcmd % {'python': self.python_cmd}
                 cmd = ' '.join([
