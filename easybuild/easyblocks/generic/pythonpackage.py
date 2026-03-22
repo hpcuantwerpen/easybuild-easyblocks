@@ -1233,16 +1233,9 @@ class PythonPackage(ExtensionEasyBlock):
                                          self.short_mod_name)
             run_pip_check(python_cmd=python_cmd)
 
-        if sanity_check_pip_list is None:
-            # by default only run 'pip list' sanity check if --upload-test-report is set
-            if build_option('upload_test_report'):
-                sanity_check_pip_list = True
-            else:
-                sanity_check_pip_list = False
-
-        if sanity_check_pip_list:
             unversioned_packages = self.cfg.get('unversioned_packages', [])
-            run_pip_list([(self.name, self.version)], python_cmd=python_cmd, unversioned_packages=unversioned_packages)
+            run_pip_list([(self.name, self.version)], python_cmd=python_cmd, unversioned_packages=unversioned_packages,
+                         check_names_versions=sanity_check_pip_list)
 
         # ExtensionEasyBlock handles loading modules correctly for multi_deps, so we clean up fake_mod_data
         # and let ExtensionEasyBlock do its job
