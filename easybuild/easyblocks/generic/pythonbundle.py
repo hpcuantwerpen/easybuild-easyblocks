@@ -26,6 +26,7 @@
 EasyBuild support for installing a bundle of Python packages, implemented as a generic easyblock
 
 @author: Kenneth Hoste (Ghent University)
+@author: Samuel Moors (Vrije Universiteit Brussel)
 """
 import os
 

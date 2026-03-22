@@ -31,6 +31,7 @@ EasyBuild support for Python packages, implemented as an easyblock
 @author: Pieter De Baets (Ghent University)
 @author: Jens Timmerman (Ghent University)
 @author: Alexander Grund (TU Dresden)
+@author: Samuel Moors (Vrije Universiteit Brussel)
 """
 import os
 import re
