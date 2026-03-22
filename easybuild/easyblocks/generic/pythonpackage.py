@@ -1201,27 +1201,21 @@ class PythonPackage(ExtensionEasyBlock):
         # inject extra '%(python)s' template value for use by sanity check commands
         self.cfg.template_values['python'] = python_cmd
 
-        sanity_pip_check = self.cfg.get('sanity_pip_check', True)
-        sanity_check_pip_list = self.cfg.get('sanity_check_pip_list')
+        params = {
+            'sanity_pip_check': self.cfg.get('sanity_pip_check', True),
+            'sanity_check_pip_list': self.cfg.get('sanity_check_pip_list'),
+        }
 
         if self.is_extension:
-            sanity_pip_check_main = self.master.cfg.get('sanity_pip_check')
-            if sanity_pip_check_main is not None:
-                # If the main easyblock (e.g. PythonBundle) defines the variable
-                # we trust it does the pip check if requested and checks for mismatches
-                sanity_pip_check = False
-                self.log.info(f"'sanity_pip_check' disabled for {self.name} extension, "
-                              f"assuming that parent will take care of it")
+            for key in params:
+                if self.master.cfg.get(key) is not None:
+                    # If the main easyblock (e.g. PythonBundle) defines the variable
+                    # we trust it does the 'pip check' or 'pip list' if requested and checks for mismatches
+                    params[key] = False
+                    self.log.info(f"'{key}' disabled for {self.name} extension, "
+                                  f"assuming that parent will take care of it")
 
-            sanity_check_pip_list_main = self.master.cfg.get('sanity_check_pip_list')
-            if sanity_check_pip_list_main is not None:
-                # If the main easyblock (e.g. PythonBundle) defines the variable
-                # we trust it does the pip list if requested and checks for mismatches
-                sanity_check_pip_list = False
-                self.log.info(f"'sanity_check_pip_list' disabled for {self.name} extension, "
-                              f"assuming that parent will take care of it")
-
-        if sanity_pip_check:
+        if params['sanity_pip_check']:
             if not self.is_extension:
                 # for stand-alone Python package installations (not part of a bundle of extensions),
                 # the (fake or real) module file must be loaded at this point,
@@ -1236,7 +1230,7 @@ class PythonPackage(ExtensionEasyBlock):
 
             unversioned_packages = self.cfg.get('unversioned_packages', [])
             run_pip_list([(self.name, self.version)], python_cmd=python_cmd, unversioned_packages=unversioned_packages,
-                         check_names_versions=sanity_check_pip_list)
+                         check_names_versions=params['sanity_check_pip_list'])
 
         # ExtensionEasyBlock handles loading modules correctly for multi_deps, so we clean up fake_mod_data
         # and let ExtensionEasyBlock do its job

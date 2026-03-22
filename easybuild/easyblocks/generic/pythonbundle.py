@@ -202,8 +202,10 @@ class PythonBundle(Bundle):
         """Run the pip check for extensions if enabled"""
         super()._sanity_check_step_extensions()
 
-        sanity_pip_check = self.cfg['sanity_pip_check']
-        sanity_check_pip_list = self.cfg['sanity_check_pip_list']
+        params = {
+            'sanity_pip_check': self.cfg['sanity_pip_check'],
+            'sanity_check_pip_list': self.cfg['sanity_check_pip_list'],
+        }
         unversioned_packages = set(self.cfg['unversioned_packages'])
 
         # The options should be set in the main EC and cannot be different between extensions.
@@ -213,11 +215,6 @@ class PythonBundle(Bundle):
         py_exts = [x for x in self.ext_instances if isinstance(x, PythonPackage)]
 
         mismatched_params = set()
-
-        params = {
-            'sanity_pip_check': sanity_pip_check,
-            'sanity_check_pip_list': sanity_check_pip_list,
-        }
 
         for ext in py_exts:
             for param, value in params.items():
