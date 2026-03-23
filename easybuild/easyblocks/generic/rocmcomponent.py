@@ -63,6 +63,7 @@ class ROCmComponent(CMakeMake):
                                                       f"{TOOLCHAIN_LLVM}, {TOOLCHAIN_HIPCC}", CUSTOM],
             'hip_platform': [HIP_PLATFORM_AMD, f"Specify HIP platform. "
                                                f"Allowed values: {HIP_PLATFORM_AMD}, {HIP_PLATFORM_NVIDIA}", CUSTOM],
+            'ignore_system_rocm': [True, "Ignore system ROCm installation", CUSTOM],
         })
         return extra_vars
 
@@ -151,4 +152,6 @@ class ROCmComponent(CMakeMake):
             # For now, pass both AMDGPU_TARGETS and GPU_TARGETS, until AMD finally drops the former for all packages.
             self.cfg['configopts'] += f'-DAMDGPU_TARGETS={self.list_to_cmake_arg(amd_gfx_list)} '
             self.cfg['configopts'] += f'-DGPU_TARGETS={self.list_to_cmake_arg(amd_gfx_list)} '
+        if self.cfg['ignore_system_rocm']:
+            self.cfg['configopts'] += "-DCMAKE_IGNORE_PREFIX_PATH=/opt/rocm "
         super().configure_step(srcdir, builddir)
