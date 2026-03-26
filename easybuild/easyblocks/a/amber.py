@@ -43,7 +43,7 @@ from easybuild.tools.build_log import EasyBuildError
 from easybuild.tools.config import build_option
 from easybuild.tools.modules import get_software_root, get_software_version
 from easybuild.tools.run import run_shell_cmd
-from easybuild.tools.filetools import remove_dir, which
+from easybuild.tools.filetools import clean_dir, which
 from easybuild.tools.systemtools import get_shared_lib_ext
 
 
@@ -145,8 +145,8 @@ class EB_Amber(CMakeMake):
             return
 
         # CMake will search a previous install directory for Amber-compiled libs. We will therefore
-        # manually remove the install directory prior to configuration.
-        remove_dir(self.installdir)
+        # manually clean the install directory prior to configuration.
+        clean_dir(self.installdir)
 
         external_libs_list = []
 
