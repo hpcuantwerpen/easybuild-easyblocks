@@ -852,7 +852,7 @@ class PythonPackage(ExtensionEasyBlock):
         ]
 
         # make dist-info directory
-        dist_info_name = f"{self.name.replace('-','_')}-{self.version}.dist-info"
+        dist_info_name = self.name.replace('-', '_') + f"-{self.version}.dist-info"
         dist_info_path = os.path.join(self.installdir, self.pylibdir, dist_info_name)
         mkdir(dist_info_path, parents=True)
 
@@ -860,7 +860,7 @@ class PythonPackage(ExtensionEasyBlock):
         metadata_path = os.path.join(dist_info_path, 'METADATA')
         write_file(metadata_path, '\n'.join(py_package_metadata))
 
-        self.log.info(f"Installation of dummy package for {self.name}-{self.version} successfull")
+        self.log.info(f"Installation of dummy package for {self.name}-{self.version} successfull: {metadata_path}")
 
     def py_post_install_shenanigans(self, install_dir):
         """
@@ -1222,15 +1222,15 @@ class PythonPackage(ExtensionEasyBlock):
         # (we can not pass this via custom_paths, since then the %(pyshortver)s template value will not be resolved)
         if not self.is_extension:
             site_package_dir = os.path.join('lib', 'python%(pyshortver)s', 'site-packages')
-            default_sanity_dirs = [site_package_dir]
 
+            custom_paths_files = []
             if self.cfg.get('dummy_package', False):
-                dist_info_name = f"{self.name.replace('-','_')}-{self.version}.dist-info"
-                default_sanity_dirs.append(os.path.join(site_package_dir, dist_info_name))
+                dist_info_name = self.name.replace('-', '_') + f'-{self.version}.dist-info'
+                custom_paths_files.append(os.path.join(site_package_dir, dist_info_name, 'METADATA'))
 
             kwargs.setdefault('custom_paths', {
-                'files': [],
-                'dirs': default_sanity_dirs,
+                'files': custom_paths_files,
+                'dirs': [site_package_dir],
             })
 
         # make sure 'exts_filter' argument is defined, which is used for sanity check

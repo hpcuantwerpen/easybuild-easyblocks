@@ -99,9 +99,10 @@ class PythonBundle(Bundle):
 
         # if 'python' is not used, we need to take that into account in the extensions filter
         # (which is also used during the sanity check)
-        with self.cfg.disable_templating():
-            orig_exts_filter = self.cfg['exts_filter']
-            self.cfg['exts_filter'] = (orig_exts_filter[0].replace('python', self.python_cmd), orig_exts_filter[1])
+        if self.python_cmd != 'python':
+            with self.cfg.disable_templating():
+                orig_exts_filter = self.cfg['exts_filter']
+                self.cfg['exts_filter'] = (orig_exts_filter[0].replace('python', self.python_cmd), orig_exts_filter[1])
 
     def prepare_step(self, *args, **kwargs):
         """Prepare for installing bundle of Python packages."""
