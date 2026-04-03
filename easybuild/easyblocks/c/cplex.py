@@ -101,7 +101,7 @@ class EB_CPLEX(Binary):
         ]
         no_qa = [r'Installing\.\.\..*\n.*------.*\n\n.*============.*\n.*$']
 
-        run_shell_cmd(cmd, qa_patterns=qa, qa_wait_patterns=no_qa)
+        run_shell_cmd(cmd, qa_patterns=qa, qa_wait_patterns=no_qa, qa_timeout=1000)
 
         # fix permissions on install dir
         perms = stat.S_IRWXU | stat.S_IXOTH | stat.S_IXGRP | stat.S_IROTH | stat.S_IRGRP
