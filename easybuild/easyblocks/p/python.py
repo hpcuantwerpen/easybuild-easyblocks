@@ -189,13 +189,13 @@ def run_pip_check(python_cmd=None, **kwargs):
 
     kwargs_keys = kwargs.keys()
     if 'unversioned_packages' in kwargs_keys:
-        msg = ("Parameter `unversioned_packages` is no longer supported in `run_pip_check` "
-               "and has been moved to `run_pip_list`.")
+        msg = ("Parameter unversioned_packages is no longer supported in run_pip_check, "
+               "it has been moved to run_pip_list.")
         log.deprecated(msg, '6.0')
         kwargs_keys -= {'unversioned_packages'}
 
     if kwargs_keys:
-        raise EasyBuildError(f'Parameter(s) {kwargs_keys} are not supported in `run_pip_check`.')
+        raise EasyBuildError("Parameter(s) used which are not supported in run_pip_check: " + ', '.join(kwargs_keys))
 
     if python_cmd is None:
         python_cmd = 'python'
@@ -229,7 +229,7 @@ def normalize_pip(name):
     Normalize pip package name according to
     https://packaging.python.org/en/latest/specifications/name-normalization/
     """
-    return REGEX_PIP_NORMALIZE.sub("-", name).lower()
+    return REGEX_PIP_NORMALIZE.sub('-', name).lower()
 
 
 def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_versions=None):
@@ -239,6 +239,7 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_v
     :param pkgs: list of package tuples (name, version) as specified in the easyconfig
     :param python_cmd: Python command to use (if None, 'python' is used)
     :param unversioned_packages: set of Python packages to exclude in the version existence check
+    :param check_names_versions: boolean to indicate whether name and versions of Python packages should be checked
     """
 
     log = fancylogger.getLogger('run_pip_list', fname=False)
@@ -248,14 +249,15 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_v
     elif isinstance(unversioned_packages, (list, tuple)):
         unversioned_packages = set(unversioned_packages)
     elif not isinstance(unversioned_packages, set):
-        raise EasyBuildError("Incorrect value type for 'unversioned_packages' in run_pip_check: %s",
+        raise EasyBuildError("Incorrect value type for 'unversioned_packages' in run_pip_list: %s",
                              type(unversioned_packages))
 
     if build_option('ignore_pip_unversioned_pkgs'):
         unversioned_packages.update(build_option('ignore_pip_unversioned_pkgs'))
 
     if check_names_versions is None:
-        # by default only check names and versions if --upload-test-report is set
+        # by default only check names and versions if --upload-test-report is used,
+        # so we can enforce that extension names/versions are correct for contributions
         if build_option('upload_test_report'):
             check_names_versions = True
         else:
@@ -263,8 +265,8 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_v
 
     pip_list_errors = []
 
+    msg = "Check on installed Python package names and versions with 'pip list': "
     try:
-        msg = "Check on installed Python package names and versions with 'pip list': "
         pip_pkgs_dict = det_installed_python_packages(names_only=False, python_cmd=python_cmd)
         trace_msg(msg + 'OK')
         log.info("pip list cmd passed successfully")
@@ -332,11 +334,11 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_v
             # Check for missing (likely wrong) packages names and propose close matches
             if name not in normalized_pip_pkgs:
                 close_matches = difflib.get_close_matches(name, normalized_pip_pkgs.keys())
-                missing_names.append(f'{name} (close matches in pip list: {close_matches})')
+                missing_names.append(f"{name} (close matches in 'pip list' output: " + ', '.join(close_matches))
 
             # Check for missing (likely wrong) package versions
             elif version != normalized_pip_pkgs[name]:
-                missing_versions.append(f'{name} {version} (pip list version: {normalized_pip_pkgs[name]})')
+                missing_versions.append(f"{name} {version} (version in 'pip list' output: {normalized_pip_pkgs[name]})")
 
         log.info(f"Found {len(missing_names)} missing names and {len(missing_versions)} missing versions "
                  f"out of {len(pkgs)} packages")
@@ -344,7 +346,7 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_v
         if missing_names:
             missing_names_str = '\n'.join(missing_names)
             msg = "The following Python packages were likely specified with a wrong name because they are missing "
-            msg += f"from the 'pip list' output:\n{missing_names_str}"
+            msg += f"in the 'pip list' output:\n{missing_names_str}"
             pip_list_errors.append(msg)
 
         if missing_versions:
