@@ -1062,7 +1062,11 @@ class PythonPackage(ExtensionEasyBlock):
         # This then causes packages installed by admins with `pip` to not be found,
         # see also https://github.com/easybuilders/easybuild-easyblocks/issues/4100
         if self.toolchain.is_system_toolchain():
-            abs_pylibdirs.append(os.path.join('/usr/local', self.pylibdir))
+            sys_libdir = os.path.join('/usr/local', self.pylibdir)
+            sysroot = build_option('sysroot')
+            if sysroot:
+                sys_libdir = os.path.join(sysroot, sys_libdir)
+            abs_pylibdirs.append(sys_libdir)
 
         old_values = {}
         for name, new_values in (('PYTHONPATH', abs_pylibdirs), ('PATH', [abs_bindir])):
