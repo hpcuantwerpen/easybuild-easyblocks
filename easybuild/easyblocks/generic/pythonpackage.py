@@ -1059,7 +1059,8 @@ class PythonPackage(ExtensionEasyBlock):
         # When using the system Python also include /usr/local as on some systems (e.g. EL 10 with Python 3.12)
         # the site config at /usr/lib64/python3.12/site.py only adds the /usr/local folder when NOT using
         # $PYTHONNOUSERSITE, which we set explicitely.
-        # This then causes packages installed by admins with `pip` to not be found.
+        # This then causes packages installed by admins with `pip` to not be found,
+        # see also https://github.com/easybuilders/easybuild-easyblocks/issues/4100
         if self.toolchain.is_system_toolchain():
             abs_pylibdirs.append(os.path.join('/usr/local', self.pylibdir))
 
