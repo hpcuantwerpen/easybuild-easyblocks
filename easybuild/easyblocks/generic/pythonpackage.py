@@ -31,6 +31,7 @@ EasyBuild support for Python packages, implemented as an easyblock
 @author: Pieter De Baets (Ghent University)
 @author: Jens Timmerman (Ghent University)
 @author: Alexander Grund (TU Dresden)
+@author: Samuel Moors (Vrije Universiteit Brussel)
 """
 import os
 import re
@@ -42,7 +43,7 @@ from sysconfig import get_config_vars
 import easybuild.tools.environment as env
 from easybuild.base import fancylogger
 from easybuild.easyblocks.python import EXTS_FILTER_DUMMY_PACKAGES, EXTS_FILTER_PYTHON_PACKAGES, set_py_env_vars
-from easybuild.easyblocks.python import det_installed_python_packages, det_pip_version, run_pip_check
+from easybuild.easyblocks.python import det_installed_python_packages, det_pip_version, run_pip_check, run_pip_list
 from easybuild.framework.easyconfig import CUSTOM
 from easybuild.framework.easyconfig.default import DEFAULT_CONFIG
 from easybuild.framework.easyconfig.templates import PYPI_SOURCE
@@ -508,6 +509,8 @@ class PythonPackage(ExtensionEasyBlock):
             'max_py_minver': [None, "Maximum minor Python version (only relevant when using system Python)", CUSTOM],
             'sanity_pip_check': [True, "Run 'python -m pip check' to ensure all required Python packages are "
                                        "installed and check for any package with an invalid (0.0.0) version.", CUSTOM],
+            'sanity_check_pip_list': [None, "Run 'python -m pip list' to ensure specified package names and versions "
+                                            "are correct.", CUSTOM],
             'runtest': [True, "Run unit tests.", CUSTOM],  # overrides default
             'testinstall': [False, "Install into temporary directory prior to running the tests.", CUSTOM],
             'unpack_sources': [None, "Unpack sources prior to build/install. Defaults to 'True' except for whl files",
@@ -521,7 +524,7 @@ class PythonPackage(ExtensionEasyBlock):
             # see https://packaging.python.org/tutorials/installing-packages/#installing-setuptools-extras
             'use_pip_extras': [None, "String with comma-separated list of 'extras' to install via pip", CUSTOM],
             'use_pip_for_deps': [False, "Install dependencies using '%s'" % PIP_INSTALL_CMD, CUSTOM],
-            'use_pip_requirement': [False, "Install using 'python -m pip install --requirement'. The sources is " +
+            'use_pip_requirement': [False, "Install using 'python -m pip install --requirement'. The sources is "
                                            "expected to be the requirements file.", CUSTOM],
             'zipped_egg': [False, "Install as a zipped eggs", CUSTOM],
         })
@@ -1049,8 +1052,8 @@ class PythonPackage(ExtensionEasyBlock):
                 # Requires having the installation in place to work correctly, since no path configuration files
                 # will be found otherwise
                 if self.should_use_ebpythonprefixes():
-                    extrapath += "export EBPYTHONPREFIXES=%s && " % os.pathsep.join([self.pypkg_test_installdir] +
-                                                                                    ['$EBPYTHONPREFIXES'])
+                    extrapath += "export EBPYTHONPREFIXES=%s && " % os.pathsep.join([self.pypkg_test_installdir]
+                                                                                    + ['$EBPYTHONPREFIXES'])
             if self.testcmd:
                 testcmd = self.testcmd % {'python': self.python_cmd}
                 cmd = ' '.join([
@@ -1255,7 +1258,7 @@ class PythonPackage(ExtensionEasyBlock):
 
         if self.multi_python:
             # when installing for multiple Python versions, we must use 'python', not a full-path 'python' command!
-            pip_check_python_cmd = 'python'
+            python_cmd = 'python'
             if 'exts_filter' not in kwargs:
                 kwargs.update({'exts_filter': exts_sanity_filter})
         else:
@@ -1263,26 +1266,29 @@ class PythonPackage(ExtensionEasyBlock):
             # (which is required especially when installing with system Python)
             if self.python_cmd is None:
                 self.prepare_python()
-            pip_check_python_cmd = self.python_cmd
+            python_cmd = self.python_cmd
             if 'exts_filter' not in kwargs:
                 exts_filter = (exts_sanity_filter[0].replace('python', self.python_cmd), exts_sanity_filter[1])
                 kwargs.update({'exts_filter': exts_filter})
 
         # inject extra '%(python)s' template value for use by sanity check commands
-        self.cfg.template_values['python'] = pip_check_python_cmd
+        self.cfg.template_values['python'] = python_cmd
 
-        sanity_pip_check = self.cfg.get('sanity_pip_check', True)
+        params = {
+            'sanity_pip_check': self.cfg.get('sanity_pip_check', True),
+            'sanity_check_pip_list': self.cfg.get('sanity_check_pip_list'),
+        }
+
         if self.is_extension:
-            sanity_pip_check_main = self.master.cfg.get('sanity_pip_check')
-            if sanity_pip_check_main is not None:
-                # If the main easyblock (e.g. PythonBundle) defines the variable
-                # we trust it does the pip check if requested and checks for mismatches
-                sanity_pip_check = False
-                self.log.info(f"Sanity 'pip check' disabled for {self.name} extension, "
-                              f"assuming that parent will take care of it"
-                              )
+            for key in params:
+                if self.master.cfg.get(key) is not None:
+                    # If the main easyblock (e.g. PythonBundle) defines the variable
+                    # we trust it does the 'pip check' or 'pip list' if requested and checks for mismatches
+                    params[key] = False
+                    self.log.info(f"'{key}' disabled for {self.name} extension, "
+                                  f"assuming that parent will take care of it")
 
-        if sanity_pip_check:
+        if params['sanity_pip_check']:
             if not self.is_extension:
                 # for stand-alone Python package installations (not part of a bundle of extensions),
                 # the (fake or real) module file must be loaded at this point,
@@ -1293,9 +1299,12 @@ class PythonPackage(ExtensionEasyBlock):
                     self.log.debug("Currently loaded modules: %s", loaded_modules)
                     raise EasyBuildError("%s module is not loaded, this should never happen...",
                                          self.short_mod_name)
+            run_pip_check(python_cmd=python_cmd)
 
             unversioned_packages = self.cfg.get('unversioned_packages', [])
-            run_pip_check(python_cmd=pip_check_python_cmd, unversioned_packages=unversioned_packages)
+            pkgs = [(self.name, self.version)]
+            run_pip_list(pkgs, python_cmd=python_cmd, unversioned_packages=unversioned_packages,
+                         check_names_versions=params['sanity_check_pip_list'])
 
         # ExtensionEasyBlock handles loading modules correctly for multi_deps, so we clean up fake_mod_data
         # and let ExtensionEasyBlock do its job
