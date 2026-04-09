@@ -116,6 +116,32 @@ KOKKOS_CPU_ARCH_LIST = [
 ] + KOKKOS_INTEL_PACKAGE_ARCH_LIST
 
 
+KOKKOS_LEGACY_ARCH_MAPPING = {
+    'ZEN': 'EPYC',
+    'ZEN2': 'EPYC',
+    'ZEN3': 'EPYC',
+    'POWER8': 'Power8',
+    'POWER9': 'Power9',
+}
+
+
+KOKKOS_CPU_MAPPING = {
+    'sandybridge': 'SNB',
+    'ivybridge': 'SNB',
+    'haswell': 'HSW',
+    'broadwell': 'BDW',
+    'skylake_avx512': 'SKX',
+    'cascadelake': 'SKX',
+    'icelake': 'SKX',
+    'sapphirerapids': 'SKX',
+    'knights-landing': 'KNL',
+    'zen': 'ZEN',
+    'zen2': 'ZEN2',
+    'zen3': 'ZEN3',
+    'power9le': 'POWER9',
+}
+
+
 KOKKOS_GPU_ARCH_TABLE = {
     '3.0': 'KEPLER30',  # NVIDIA Kepler generation CC 3.0
     '3.2': 'KEPLER32',  # NVIDIA Kepler generation CC 3.2
@@ -133,8 +159,11 @@ KOKKOS_GPU_ARCH_TABLE = {
     '8.6': 'AMPERE86',  # NVIDIA Ampere generation CC 8.6
     '8.9': 'ADA89',  # NVIDIA Ada Lovelace generation CC 8.9
     '9.0': 'HOPPER90',  # NVIDIA Hopper generation CC 9.0
+    '9.0a': 'HOPPER90',  # NVIDIA Hopper generation cc 9.0 with family-specific optimization
     '10.0': 'BLACKWELL100',  # NVIDIA Blackwell generation CC 10.0
+    '10.0f': 'BLACKWELL100',  # # NVIDIA Blackwell generation CC 10.0 with family-specific optimization
     '12.0': 'BLACKWELL120',  # NVIDIA Blackwell generation CC 12.0
+    '12.0f': 'BLACKWELL120',  # NVIDIA Blackwell generation CC 12.0 with family-specific optimization
     'gfx906': 'AMD_GFX906',  # MI50 / MI60
     'gfx908': 'AMD_GFX908',  # MI100
     'gfx90a': 'AMD_GFX90A',  # MI200 series
