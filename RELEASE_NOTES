@@ -3,7 +3,42 @@ For more detailed information, please see the git log.
 
 These release notes can also be consulted at https://docs.easybuild.io/release-notes .
 
-The latest version of easybuild-easyblocks provides 208 software-specific easyblocks and 46 generic easyblocks.
+The latest version of easybuild-easyblocks provides 209 software-specific easyblocks and 47 generic easyblocks.
+
+
+v5.3.0 (10 Apr 2026)
+--------------------
+
+feature release
+
+- new easyblocks:
+  - add generic `ROCmComponent` easyblock to build & install ROCm components (#3861)
+  - custom easyblock for Sentaurus (#4001)
+- bug fixes:
+  - add guard to sanity check in custom easyblock for Stata to avoid running `ldd` on non ELF executable (#4077)
+  - take into account that no Python dependency may be provided when setting `$Python3_ROOT_DIR` in configure step of `PythonPackage` easyblock (#4079)
+  - also handle references to git tags in Cargo crates and download git repos recursively (#4081)
+  - make sure that netcdf easyblock picks up the provided libxml2 and bzip2 dependencies (#4086)
+  - set `$CIRCLECI` environment variable for torchvsion to work around flaky test (that requires downloading a file from `wikimedia.org`) (#4094)
+  - include `/usr/local` Python package directory for system-level Python package installations (#4095)
+  - avoid crash in test step of custom easyblock for SuperLU if OpenMPI is not a dependency (#4099)
+- enhancements:
+  - use `clean_dir` instead of `remove_dir` on installation directory various easyblocks: `Binary` (#3927), `Tarball` (#3926),
+    Amber (+ AmberTools) (#3935), Anaconda (#3934), FDTD_Solutions (#3933), GATE (#3932), Go (#3931), Java (#3928), Molpro (#3930), Tkinter (#3929)
+  - enhance `PythonPackage` and `PythonBundle` to verify Python package names and versions with `pip list` with `sanity_check_pip_list` parameter (#4049)
+  - add ignore patterns for some RISC-V tests in LLVM easyblock (#4059)
+  - enhance `PythonPackage` and `PythonBundle` easyblocks to add support to install dummy Python packages (#4063)
+  - enhance custom easyblocks for SCOTCH & MUMPS to add `lfoss` toolchain support (#4069)
+  - add search paths to CUPTI in installations of nvidia-compilers with CUDA (#4085)
+  - enhance custom easyblock for Amber easyblock to support installing `pmemd` only (#4093)
+  - limit number of parallel compile jobs in PyTorch tests by setting `$MAX_JOBS` + add support for using Arm Compute Library (ACL) as dependency (#4096)
+  - be more patient when running CPLEX interactive installer (#4103)
+  - add mapping to LAMMPS easyblock for `9.0a`, `10.0f` and `12.0f` CUDA compute capabilities (#4105)
+- updates:
+  - update Conda easyblock to take into account that in Conda 24.3 `--force` was renamed to `--yes` (#3573)
+  - update CPLEX easyblock for CPLEX v22.1.2 (which doesn't include Python bindings anymore) (#3909)
+  - update jaxlib easyblock to support LLVM as alternative to Clang for CUDA builds (#4101)
+
 
 v5.2.1 (20 Feb 2026)
 --------------------
