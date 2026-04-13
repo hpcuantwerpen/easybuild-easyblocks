@@ -347,7 +347,7 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, strict_check=
     if missing_names:
         missing_names_str = '\n'.join(missing_names)
         msg = "The following Python packages were likely specified with a wrong name because they are missing "
-        msg += f"in the 'pip list' output:\n{missing_names_str}"
+        msg += f"in the 'pip list' output (causes failure if --upload-test-report is set):\n{missing_names_str}"
         if strict_check:
             pip_list_errors.append(msg)
         else:
@@ -356,7 +356,8 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, strict_check=
     if missing_versions:
         missing_versions_str = '\n'.join(missing_versions)
         msg = "The following Python packages were likely specified with a wrong version because they have "
-        msg += f"another version in the 'pip list' output:\n{missing_versions_str}"
+        msg += "another version in the 'pip list' output (causes failure if --upload-test-report is set):\n"
+        msg += missing_versions_str
         if strict_check:
             pip_list_errors.append(msg)
         else:
