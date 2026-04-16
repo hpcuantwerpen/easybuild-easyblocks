@@ -100,6 +100,7 @@ KOKKOS_CPU_ARCH_LIST = [
     'AMD_GFX90A',  # AMD GPU MI200, since Kokkos 4.2
     'AMD_GFX942',  # AMD GPU MI300, since Kokkos 4.2
     'AMD_GFX942_APU',  # AMD APU MI300A, since Kokkos 4.5
+    'AMD_GFX950',  # MI355X, MI350X, since Kokkos 5.1
     'AMD_GFX1030',  # AMD GPU V620/W6800, since Kokkos 4.2
     'AMD_GFX1100',  # AMD GPU RX7900XTX, since Kokkos 4.2
     'AMD_GFX1103',  # AMD APU Phoenix, since Kokkos 4.5
