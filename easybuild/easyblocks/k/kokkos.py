@@ -315,9 +315,9 @@ class EB_Kokkos(CMakeMake):
             self.cfg.update('configopts', '-DKokkos_ENABLE_HIP=ON')
             self.cfg.update('configopts', '-DKokkos_ARCH_%s=ON' % gpu_arch)
             if 'rocthrust' in [dep['name'].lower() for dep in self.cfg.dependencies(runtime_only=True)]:
-                self.cfg.update('configopts', '-DKokkos_ENABLE_ROCTRUST=ON')
+                self.cfg.update('configopts', '-DKokkos_ENABLE_ROCTHRUST=ON')
             else:
-                self.cfg.update('configopts', '-DKokkos_ENABLE_ROCTRUST=OFF')
+                self.cfg.update('configopts', '-DKokkos_ENABLE_ROCTHRUST=OFF')
         elif self.sycl:
             self.cfg.update('configopts', '-DKokkos_ENABLE_SYCL=ON')
             if 'onedpl' in [dep['name'].lower() for dep in self.cfg.dependencies(runtime_only=True)]:
