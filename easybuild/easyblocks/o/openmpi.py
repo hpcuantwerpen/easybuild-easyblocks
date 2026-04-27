@@ -227,6 +227,10 @@ class EB_OpenMPI(ConfigureMake):
 
         custom_commands = ["%s --version | grep '%s'" % (key, expected[key]) for key in sorted(expected.keys())]
 
+        rocmroot = get_software_root('ROCm-LLVM')
+        if rocmroot:
+            custom_commands.append("ompi_info | grep -i 'rocm'")
+
         # Add minimal test program to sanity checks
         # Run with correct MPI launcher
         mpi_cmd_tmpl, params = get_mpi_cmd_template(toolchain.OPENMPI, {}, mpi_version=self.version)
@@ -264,9 +268,5 @@ class EB_OpenMPI(ConfigureMake):
                     # See https://github.com/easybuilders/easybuild-easyconfigs/issues/12978
                     params['nr_ranks'] = 1
                     custom_commands.append(mpi_cmd_tmpl % params)
-
-                rocmroot = get_software_root('ROCm')
-                if rocmroot:
-                    custom_commands.append("ompi_info | grep -i 'rocm'")
 
         super().sanity_check_step(custom_paths=custom_paths, custom_commands=custom_commands)
