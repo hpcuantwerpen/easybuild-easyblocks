@@ -218,11 +218,11 @@ class EB_OpenMPI(ConfigureMake):
             expected['mpif90'] = 'pgfortran'
         # for Clang the pattern is always clang
         for key in ['mpicc', 'mpicxx']:
-            if expected[key] in ['clang++']:
+            if expected[key] in ['clang++', 'amdclang', 'amdclang++']:
                 expected[key] = 'clang'
         # for flang/flang-new the pattern is always flang
         for key in ['mpifort', 'mpif90']:
-            if expected[key] in ['flang', 'flang-new']:
+            if expected[key] in ['flang', 'flang-new', 'amdflang']:
                 expected[key] = 'flang'
 
         custom_commands = ["%s --version | grep '%s'" % (key, expected[key]) for key in sorted(expected.keys())]
@@ -264,5 +264,9 @@ class EB_OpenMPI(ConfigureMake):
                     # See https://github.com/easybuilders/easybuild-easyconfigs/issues/12978
                     params['nr_ranks'] = 1
                     custom_commands.append(mpi_cmd_tmpl % params)
+
+                rocmroot = get_software_root('ROCm')
+                if rocmroot:
+                    custom_commands.append("ompi_info | grep -i 'rocm'")
 
         super().sanity_check_step(custom_paths=custom_paths, custom_commands=custom_commands)
