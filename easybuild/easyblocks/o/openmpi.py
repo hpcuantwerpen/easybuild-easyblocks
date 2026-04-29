@@ -218,14 +218,18 @@ class EB_OpenMPI(ConfigureMake):
             expected['mpif90'] = 'pgfortran'
         # for Clang the pattern is always clang
         for key in ['mpicc', 'mpicxx']:
-            if expected[key] in ['clang++']:
+            if expected[key] in ['clang++', 'amdclang', 'amdclang++']:
                 expected[key] = 'clang'
         # for flang/flang-new the pattern is always flang
         for key in ['mpifort', 'mpif90']:
-            if expected[key] in ['flang', 'flang-new']:
+            if expected[key] in ['flang', 'flang-new', 'amdflang']:
                 expected[key] = 'flang'
 
         custom_commands = ["%s --version | grep '%s'" % (key, expected[key]) for key in sorted(expected.keys())]
+
+        rocmroot = get_software_root('ROCm-LLVM')
+        if rocmroot:
+            custom_commands.append("ompi_info | grep -i 'rocm'")
 
         # Add minimal test program to sanity checks
         # Run with correct MPI launcher
