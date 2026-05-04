@@ -25,10 +25,11 @@ import re
 from easybuild.easyblocks.generic.cmakeninja import CMakeNinja
 from easybuild.tools.systemtools import get_cpu_architecture, get_cpu_features
 from easybuild.tools.systemtools import X86_64
+from easybuild.tools.systemtools import get_shared_lib_ext
 from easybuild.tools.utilities import trace_msg
 from easybuild.tools.build_log import EasyBuildError, print_error
 from easybuild.tools.filetools import remove_file, remove_dir
-from easybuild.tools.modules import get_software_root
+from easybuild.tools.modules import get_software_root, get_software_version
 from easybuild.tools import LooseVersion
 
 
@@ -93,18 +94,100 @@ class EB_ESPResSo(CMakeNinja):
             version = 'commit'
         return version
 
+    def _set_exe_linker_flags(self):
+        exe_linker_flags_relpaths = []
+        if get_software_root('HeFFTe'):
+            exe_linker_flags_relpaths.append('heffte-build')
+        if get_software_root('Kokkos'):
+            exe_linker_flags_relpaths += [
+                'kokkos-build/containers/src',
+                'kokkos-build/core/src',
+                'kokkos-build/simd/src',
+            ]
+        if exe_linker_flags_relpaths:
+            # workaround for https://gitlab.kitware.com/cmake/cmake/-/issues/22678
+            # (this only affects testsuite executable files in the build folder)
+            exe_linker_flags = ':'.join(f'{self.builddir}/easybuild_obj/_deps/{path}'
+                                        for path in exe_linker_flags_relpaths)
+            self.cfg.update('configopts', f' -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link,{exe_linker_flags}" ')
+
     def _configure_step_release_420(self):
-        for dep in ['CUDA', 'GSL', 'FFTW', 'PYTHON', 'SCAFACOS']:
+        for dep in ['CUDA', 'GSL', 'FFTW', 'Python', 'ScaFaCoS']:
             dep_flag = 'OFF'
             if get_software_root(dep):
                 dep_flag = 'ON'
             self.cfg.update('configopts', f"-DWITH_{dep.upper()}={dep_flag}")
         self.cfg.update('configopts', ' -DWITH_STOKESIAN_DYNAMICS=OFF')
         self.cfg.update('configopts', ' -DWITH_TESTS=ON')
+        self.cfg.update('configopts', ' -DCMAKE_SKIP_RPATH=OFF')
+        # make sure the right Python is used (note: -DPython3_EXECUTABLE or -DPython_EXECUTABLE does not work!)
+        self.cfg.update('configopts', f' -DPYTHON_EXECUTABLE={get_software_root("Python")}/bin/python')
+
+        # list packaged files
+        pyshortver = '.'.join(get_software_version('Python').split('.')[:2])
+        _libs = [
+            'Espresso_config', 'Espresso_core', 'Espresso_script_interface',
+            'Espresso_shapes', '_init', 'analyze', 'code_info', 'electrokinetics',
+            'galilei', 'integrate', 'interactions', 'lb', 'particle_data', 'polymer',
+            'profiler', 'script_interface', 'system', 'thermostat', 'utils', 'version',
+        ]
+        _python_modules = [
+            '__init__.py', 'collision_detection.py', 'accumulators.py',
+            'constraints.py', 'electrostatics.py', 'magnetostatics.py',
+            'observables.py', 'reaction_methods.py',
+        ]
+        if get_software_root('CUDA'):
+            _libs.append('cuda_init')
+        _binaries = ['ipypresso',  'pypresso']
+        _lib_path = f'lib/python{pyshortver}/site-packages/espressomd'
+
+        return _binaries, _lib_path, _libs, _python_modules
 
     def _configure_step_release_500(self):
         cpu_features = get_cpu_features()
-        for dep in ['CUDA', 'GSL', 'FFTW', 'PYTHON', 'SCAFACOS', 'HDF5', 'NLOPT']:
+        for dep in ['CUDA', 'GSL', 'FFTW', 'Python', 'ScaFaCoS', 'HDF5', 'NLopt']:
+            dep_flag = 'OFF'
+            if get_software_root(dep):
+                dep_flag = 'ON'
+            self.cfg.update('configopts', f"-DESPRESSO_BUILD_WITH_{dep.upper()}={dep_flag}")
+        if get_software_root('Kokkos') and get_software_root('Cabana'):
+            self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_SHARED_MEMORY_PARALLELISM=ON')
+        self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_STOKESIAN_DYNAMICS=OFF')
+        self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_WALBERLA=ON')
+        if get_cpu_architecture() == X86_64 and 'avx2' in cpu_features:
+            self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_WALBERLA_AVX=ON')
+        self.cfg.update('configopts', ' -DESPRESSO_BUILD_TESTS=ON')
+        self._set_exe_linker_flags()
+
+        # build_cmd_targets does not work with CMakeNinja, use buildopts instead
+        self.cfg['buildopts'] = 'espresso_packaging_dependencies'
+
+        # list packaged files
+        pyshortver = '.'.join(get_software_version('Python').split('.')[:2])
+        _libs = [
+            'espresso_core', 'espresso_shapes', 'espresso_walberla',
+            'espresso_script_interface', 'script_interface', 'utils', '_init',
+        ]
+        _python_modules = [
+            '__init__.py', 'accumulators.py', 'collision_detection.py',
+            'constraints.py', 'electrokinetics.py', 'electrostatics.py',
+            'magnetostatics.py', 'lb.py', 'lees_edwards.py', 'observables.py',
+            'particle_data.py', 'reaction_methods.py', 'system.py',
+            'thermostat.py', 'version.py',
+        ]
+        if get_software_root('HDF5'):
+            _libs.append('espresso_hdf5')
+            _python_modules.append('io/writer/h5md.py')
+        if get_software_root('CUDA'):
+            _python_modules.append('cuda_init.py')
+        _binaries = ['ipypresso',  'pypresso']
+        _lib_path = f'lib/python{pyshortver}/site-packages/espressomd'
+
+        return _binaries, _lib_path, _libs, _python_modules
+
+    def _configure_step_release_510(self):
+        cpu_features = get_cpu_features()
+        for dep in ['CUDA', 'GSL', 'FFTW', 'Python', 'ScaFaCoS', 'HDF5', 'NLopt']:
             dep_flag = 'OFF'
             if get_software_root(dep):
                 dep_flag = 'ON'
@@ -114,6 +197,33 @@ class EB_ESPResSo(CMakeNinja):
         if get_cpu_architecture() == X86_64 and 'avx2' in cpu_features:
             self.cfg.update('configopts', ' -DESPRESSO_BUILD_WITH_WALBERLA_AVX=ON')
         self.cfg.update('configopts', ' -DESPRESSO_BUILD_TESTS=ON')
+        self._set_exe_linker_flags()
+
+        # build_cmd_targets does not work with CMakeNinja, use buildopts instead
+        self.cfg['buildopts'] = 'espresso_packaging_dependencies'
+
+        # list packaged files
+        pyshortver = '.'.join(get_software_version('Python').split('.')[:2])
+        _libs = [
+            'espresso_core', 'espresso_shapes', 'espresso_walberla',
+            'espresso_script_interface', 'script_interface', 'utils', '_init',
+        ]
+        _python_modules = [
+            '__init__.py', 'accumulators.py', 'collision_detection.py',
+            'constraints.py', 'electrokinetics.py', 'electrostatics.py',
+            'magnetostatics.py', 'lb.py', 'lees_edwards.py', 'observables.py',
+            'particle_data.py', 'reaction_methods.py', 'system.py',
+            'thermostat.py', 'version.py',
+        ]
+        if get_software_root('HDF5'):
+            _libs.append('espresso_hdf5')
+            _python_modules.append('io/writer/h5md.py')
+        if get_software_root('CUDA'):
+            _python_modules.append('cuda_init.py')
+        _binaries = ['ipypresso',  'pypresso']
+        _lib_path = f'lib/python{pyshortver}/site-packages/espressomd'
+
+        return _binaries, _lib_path, _libs, _python_modules
 
     def configure_step(self):
         # patch FetchContent to avoid re-downloading dependencies
@@ -121,15 +231,31 @@ class EB_ESPResSo(CMakeNinja):
 
         version = self._get_version()
         if version == 'commit':
-            self._configure_step_release_500()
+            paths = self._configure_step_release_510()
+        elif version[:2] >= (5, 1):
+            paths = self._configure_step_release_510()
         elif version[:2] >= (5, 0):
-            self._configure_step_release_500()
+            paths = self._configure_step_release_500()
         elif version[:2] >= (4, 2):
-            self._configure_step_release_420()
+            paths = self._configure_step_release_420()
         else:
             raise EasyBuildError(
                 f'EasyBlock {self.__class__.__name__} doesn\'t implement the '
                 f'configure step for ESPResSo {self.version}')
+
+        _binaries, _lib_path, _libs, _python_modules = paths
+
+        self.cfg['sanity_check_paths'] = {
+            'files': [f'bin/{x}' for x in _binaries] +
+                     [f'{_lib_path}/{x}.{get_shared_lib_ext()}' for x in _libs] +
+                     [f'{_lib_path}/{x}' for x in _python_modules],
+            'dirs': ['bin', 'lib']
+        }
+        self.cfg['sanity_check_commands'] = [
+            'pypresso -h', 'ipypresso -h',
+            'pypresso -c "import espressomd.version;print(espressomd.version.friendly())"',
+            'python3 -c "import espressomd.version;print(espressomd.version.friendly())"',
+        ]
 
         return super(EB_ESPResSo, self).configure_step()
 
