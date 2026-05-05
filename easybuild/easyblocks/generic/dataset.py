@@ -33,7 +33,7 @@ from easybuild.framework.easyblock import EasyBlock
 from easybuild.easyblocks.generic.binary import Binary
 from easybuild.framework.easyconfig.default import CUSTOM
 from easybuild.tools.build_log import EasyBuildError
-from easybuild.tools.filetools import compute_checksum, change_dir, create_index, is_readable, mkdir, move_file
+from easybuild.tools.filetools import change_dir, compute_checksum, create_index, is_readable, mkdir, move_file
 from easybuild.tools.filetools import remove_file, symlink
 from easybuild.tools.utilities import trace_msg
 
