@@ -33,8 +33,8 @@ from easybuild.framework.easyblock import EasyBlock
 from easybuild.easyblocks.generic.binary import Binary
 from easybuild.framework.easyconfig.default import CUSTOM
 from easybuild.tools.build_log import EasyBuildError
-from easybuild.tools.filetools import compute_checksum, create_index, is_readable, mkdir, move_file, remove_file
-from easybuild.tools.filetools import symlink
+from easybuild.tools.filetools import change_dir, compute_checksum, create_index, is_readable, mkdir, move_file
+from easybuild.tools.filetools import remove_file, symlink
 from easybuild.tools.utilities import trace_msg
 
 
@@ -72,10 +72,12 @@ class Dataset(Binary):
 
     def post_processing_step(self):
         """Add files to object_storage, remove duplicates, add symlinks"""
-        trace_msg('adding files to object_storage...')
+        trace_msg("adding files to 'object_storage'...")
 
         # creating object storage at root of software name to reuse identical files in different versions
-        object_storage = os.path.join(os.pardir, 'object_storage')
+        change_dir(self.installdir)
+        object_storage = os.path.normpath(os.path.join(os.getcwd(), os.pardir, 'object_storage'))
+
         datafiles = create_index(os.curdir)
 
         for datafile in datafiles:
