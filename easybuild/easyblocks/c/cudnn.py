@@ -68,6 +68,7 @@ class EB_cuDNN(Tarball):
         self.cfg['keepsymlinks'] = True
         self.cfg.template_values['cudnnarch'] = cudnnarch
         self.cfg.generate_template_values()
+        self.cfg.update('modextravars', {'CUDNN_HOME': self.installdir})
 
     def fetch_step(self, *args, **kwargs):
         """Check for EULA acceptance prior to getting sources."""
