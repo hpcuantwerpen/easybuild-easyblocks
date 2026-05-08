@@ -93,6 +93,7 @@ KOKKOS_CPU_ARCH_LIST = [
     'ADA89',  # NVIDIA Ada Lovelace generation CC 8.9 GPU, since Kokkos 4.1
     'HOPPER90',  # NVIDIA Hopper generation CC 9.0 GPU, since Kokkos 4.0
     'BLACKWELL100',  # NVIDIA Blackwell generation CC 10.0 GPU, since Kokkos 4.7
+    'BLACKWELL103',  # NVIDIA Blackwell generation, since Kokkos 5.1
     'BLACKWELL120',  # NVIDIA Blackwell generation CC 12.0 GPU, since Kokkos 4.7
 
     'AMD_GFX906',  # AMD GPU MI50/MI60, since Kokkos 4.2
