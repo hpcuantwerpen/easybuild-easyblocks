@@ -1,5 +1,5 @@
 ##
-# Copyright 2021-2024 Ghent University
+# Copyright 2021-2026 Ghent University
 #
 # This file is part of EasyBuild,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -28,30 +28,23 @@ EasyBuild support for building and installing torchvision, implemented as an eas
 @author: Alexander Grund (TU Dresden)
 @author: Kenneth Hoste (HPC-UGent)
 """
+import os
+
 from easybuild.easyblocks.generic.pythonpackage import PythonPackage, det_pylibdir
 from easybuild.tools.build_log import EasyBuildError
 from easybuild.tools.config import build_option
-from easybuild.tools.modules import get_software_version
+from easybuild.tools.modules import get_software_version, get_software_root
 import easybuild.tools.environment as env
 
 
 class EB_torchvision(PythonPackage):
     """Support for building/installing TorchVison."""
 
-    @staticmethod
-    def extra_options():
-        """Change some defaults for easyconfig parameters."""
-        extra_vars = PythonPackage.extra_options()
-        extra_vars['use_pip'][0] = True
-        extra_vars['download_dep_fail'][0] = True
-        extra_vars['sanity_pip_check'][0] = True
-        return extra_vars
-
     def __init__(self, *args, **kwargs):
         """Initialize torchvision easyblock."""
-        super(EB_torchvision, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-        dep_names = set(dep['name'] for dep in self.cfg.dependencies())
+        dep_names = self.cfg.dependency_names()
 
         # require that PyTorch is listed as dependency
         if 'PyTorch' not in dep_names:
@@ -78,18 +71,39 @@ class EB_torchvision(PythonPackage):
             if cuda_cc:
                 env.setvar('TORCH_CUDA_ARCH_LIST', ';'.join(cuda_cc))
 
-        super(EB_torchvision, self).configure_step()
+        includes = []
+        for lib in ['libjpeg-turbo', 'libwebp']:
+            libroot = get_software_root(lib)
+            if libroot and 'TORCHVISION_INCLUDE' not in self.cfg['preinstallopts']:
+                includes.append(os.path.join(libroot, 'include'))
+        if includes:
+            env.setvar('TORCHVISION_INCLUDE', os.path.pathsep.join(includes))
+
+        # Set environment variable that skips tests that require authentication with wikimedia
+        # See https://github.com/pytorch/vision/issues/9413
+        if self.cfg['runtest']:
+            env.setvar('CIRCLECI', 'true')
+
+        super().configure_step()
 
     def sanity_check_step(self):
         """Custom sanity check for torchvision."""
-        custom_commands = None
-        custom_paths = None
+
+        # load module early ourselves rather than letting parent sanity_check_step method do so,
+        # so the correct 'python' command is used to by det_pylibdir() below;
+        if not self.sanity_check_module_loaded:
+            self.sanity_check_load_module(extension=self.is_extension)
+
+        custom_commands = []
+        custom_paths = {
+            'files': [],
+            'dirs': [det_pylibdir()],
+        }
 
         # check whether torchvision was indeed built with CUDA support,
         # cfr. https://discuss.pytorch.org/t/notimplementederror-could-not-run-torchvision-nms-with-arguments-from-\
         #      the-cuda-backend-this-could-be-because-the-operator-doesnt-exist-for-this-backend/132352/4
         if self.with_cuda:
-            custom_commands = []
             python_code = '\n'.join([
                 "import torch, torchvision",
                 "if torch.cuda.device_count():",
@@ -98,9 +112,15 @@ class EB_torchvision(PythonPackage):
                 "    print(torchvision.ops.nms(boxes, scores, 0.5))",
             ])
             custom_commands.append('python -c "%s"' % python_code)
-            custom_paths = {
-                'files': [],
-                'dirs': [det_pylibdir()],
-            }
 
-        return super(EB_torchvision, self).sanity_check_step(custom_commands=custom_commands, custom_paths=custom_paths)
+        if get_software_root('libjpeg-turbo'):
+            # check if torchvision was built with libjpeg support
+            # if not, will show error "RuntimeError: encode_jpeg: torchvision not compiled with libjpeg support"
+            python_code = '\n'.join([
+                "import torch, torchvision",
+                "image_tensor = torch.zeros(1, 1, 1, dtype=torch.uint8)",
+                "print(torchvision.io.image.encode_jpeg(image_tensor))",
+            ])
+            custom_commands.append('python -c "%s"' % python_code)
+
+        return super().sanity_check_step(custom_commands=custom_commands, custom_paths=custom_paths)
