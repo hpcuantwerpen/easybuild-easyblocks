@@ -72,6 +72,9 @@ class Dataset(Binary):
 
     def post_processing_step(self):
         """Add files to object_storage, remove duplicates, add symlinks"""
+
+        EasyBlock.post_processing_step(self)
+
         trace_msg("adding files to 'object_storage'...")
 
         # creating object storage at root of software name to reuse identical files in different versions
