@@ -193,7 +193,7 @@ class EB_scipy(FortranPythonPackage, PythonPackage, MesonNinja):
 
             tmp_pylibdir = os.path.join(tmp_installdir, det_pylibdir())
             self.prepare_python()
-            
+
             pytest_filter = ""
             if LooseVersion(self.version) >= LooseVersion('1.17') and not self.cfg['enable_slow_tests']:
                 pytest_filter = " -m 'not slow'"
