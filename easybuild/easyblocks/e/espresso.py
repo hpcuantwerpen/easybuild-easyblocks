@@ -277,11 +277,12 @@ class EB_ESPResSo(CMakeNinja):
         pyshortver = '.'.join(get_software_version('Python').split('.')[:2])
         _lib_path = f'lib/python{pyshortver}/site-packages/espressomd'
 
+        files = [f'bin/{x}' for x in _binaries]
+        files += [f'{_lib_path}/{x}.{get_shared_lib_ext()}' for x in _libs]
+        files += [f'{_lib_path}/{x}' for x in _python_modules]
         custom_paths = {
-            'files': [f'bin/{x}' for x in _binaries] +
-                        [f'{_lib_path}/{x}.{get_shared_lib_ext()}' for x in _libs] +
-                        [f'{_lib_path}/{x}' for x in _python_modules],
-            'dirs': ['bin', 'lib']
+            'files': files,
+            'dirs': [],
         }
         custom_commands = [
             "pypresso -h",
@@ -291,4 +292,4 @@ class EB_ESPResSo(CMakeNinja):
         ]
 
         # call out to parent to do the actual sanity checking, pass through custom paths
-        super().sanity_check_step(custom_paths=custom_paths, custom_commads=custom_commands)
+        super().sanity_check_step(custom_paths=custom_paths, custom_commands=custom_commands)
