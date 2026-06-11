@@ -184,7 +184,12 @@ class EB_ESPResSo(CMakeNinja):
             testopts = self.cfg.get('testopts', '')
             testopts += f' -j{self.cfg.parallel}'
             testopts += f' --resource-spec-file {self.builddir}/easybuild_obj/testsuite/python/resources.json'
+            testopts += ' --output-on-failure --no-tests=error'
             self.cfg['testopts'] = testopts
+
+            if self.cfg['runtest'] is None:
+                self.cfg['test_cmd'] = 'ctest'
+                self.cfg['runtest'] = '-L "unit_test|python_test"'
 
         return super(EB_ESPResSo, self).test_step()
 
