@@ -88,7 +88,7 @@ class EB_ESPResSo(CMakeNinja):
 
     def _get_version(self):
         """
-        Internal helper function to get ESPResSo version
+        Internal helper function to get the ESPResSo version.
         """
         if '.' in self.version:
             version = tuple(LooseVersion(self.version).version)
@@ -98,7 +98,7 @@ class EB_ESPResSo(CMakeNinja):
 
     def _set_exe_linker_flags(self):
         """
-        Internal helper function to set DCMAKE_EXE_LINKER_FLAGS configure option
+        Internal helper function to set the -DCMAKE_EXE_LINKER_FLAGS configure option.
         """
         exe_linker_flags_relpaths = []
         if get_software_root('HeFFTe'):
@@ -118,7 +118,7 @@ class EB_ESPResSo(CMakeNinja):
 
     def _set_configure_options_release_420(self):
         """
-        Internal helper function to set configure options for ESPResSo v4.2+ (< 5.0)
+        Internal helper function to set configure options for ESPResSo v4.2+ (< 5.0).
         """
         for dep in ['CUDA', 'GSL', 'FFTW', 'Python', 'ScaFaCoS']:
             dep_flag = 'OFF'
@@ -133,7 +133,7 @@ class EB_ESPResSo(CMakeNinja):
 
     def _set_configure_options_release_500(self):
         """
-        Internal helper function to set configure options for ESPResSo v5.0
+        Internal helper function to set configure options for ESPResSo v5.0+.
         """
         cpu_features = get_cpu_features()
         for dep in ['CUDA', 'GSL', 'FFTW', 'Python', 'ScaFaCoS', 'HDF5', 'NLopt']:
@@ -165,9 +165,9 @@ class EB_ESPResSo(CMakeNinja):
 
         version = self._get_version()
         if version[:2] >= (5, 0):
-            paths = self._set_configure_options_release_500()
+            self._set_configure_options_release_500()
         elif version[:2] >= (4, 2):
-            paths = self._set_configure_options_release_420()
+            self._set_configure_options_release_420()
         else:
             raise EasyBuildError(
                 f'EasyBlock {self.__class__.__name__} doesn\'t implement the '
@@ -262,7 +262,8 @@ class EB_ESPResSo(CMakeNinja):
             _python_modules = sorted(_python_modules + _extra_python_modules)
 
         if get_software_root('HDF5'):
-            _libs.append('espresso_hdf5')
+            if version[:2] >= (5, 0):
+                _libs.append('espresso_hdf5')
             _python_modules.append(os.path.join('io', 'writer', 'h5md.py'))
         if get_software_root('CUDA'):
             if version[:2] >= (5, 0):
