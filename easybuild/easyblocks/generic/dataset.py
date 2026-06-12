@@ -48,7 +48,8 @@ class Dataset(Binary):
         extra_vars.update({
             'extract_sources': [True, "Whether or not to extract data sources", CUSTOM],
             'data_install_path': [None, "Custom installation path for datasets", CUSTOM],
-            'cleanup_data_sources': [False, "Whether or not to delete the data sources after installation", CUSTOM]
+            'cleanup_data_sources': [False, "Whether or not to delete the data sources after installation", CUSTOM],
+            'object_storage_ignore_dirs': [None, "Directories to be excluded from object storage", CUSTOM],
         })
         return extra_vars
 
@@ -78,7 +79,7 @@ class Dataset(Binary):
         change_dir(self.installdir)
         object_storage = os.path.normpath(os.path.join(os.getcwd(), os.pardir, 'object_storage'))
 
-        datafiles = create_index(os.curdir)
+        datafiles = create_index(os.curdir, ignore_dirs=self.cfg['object_storage_ignore_dirs'])
 
         for datafile in datafiles:
             cks = compute_checksum(datafile, checksum_type='sha256')
