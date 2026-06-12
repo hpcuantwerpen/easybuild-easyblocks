@@ -77,6 +77,9 @@ class EB_VMD(ConfigureMake):
         for dep in ['ACTC', 'CUDA', 'OptiX', 'Mesa', 'OpenGL']:
             deps[dep] = get_software_root(dep)
 
+        if not ('Mesa' in deps or 'OpenGL' in deps):
+            raise EasyBuildError("Required dependency Mesa or OpenGL is missing")
+
         # specify Tcl/Tk locations & libraries
         tclinc = os.path.join(deps['Tcl'], 'include')
         tcllib = os.path.join(deps['Tcl'], 'lib')
