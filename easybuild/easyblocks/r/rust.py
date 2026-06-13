@@ -34,11 +34,12 @@ import re
 from easybuild.easyblocks.generic.configuremake import ConfigureMake
 from easybuild.framework.easyconfig import CUSTOM
 from easybuild.tools import LooseVersion
-from easybuild.tools.build_log import EasyBuildError
+from easybuild.tools.build_log import EasyBuildError, EasyBuildExit
 from easybuild.tools.config import build_option
 from easybuild.tools.filetools import is_binary, read_file
 from easybuild.tools.run import run_shell_cmd
 from easybuild.tools.systemtools import get_shared_lib_ext
+from easybuild.tools.utilities import trace_msg
 
 DEFAULT_CHANNEL = 'stable'
 
@@ -160,3 +161,27 @@ class EB_Rust(ConfigureMake):
             "rustc --version",
         ]
         return super().sanity_check_step(custom_paths=custom_paths, custom_commands=custom_commands)
+
+    def sanity_check_rpath(self, *args, **kwargs):
+        """
+        Custom RPATH sanity check for Rust
+        """
+        fails = super().sanity_check_rpath(*args, **kwargs)
+
+        mod_data = super().sanity_check_load_module()
+
+        # check whether rustc binary works when $LD_LIBRARY_PATH is not set,
+        # see https://github.com/easybuilders/easybuild-easyconfigs/issues/26232
+        cmd = "LD_LIBRARY_PATH= rustc --version"
+        trace_msg(f"Testing '{cmd}'...")
+        res = run_shell_cmd(cmd, fail_on_error=False, hidden=True)
+        if res.exit_code == EasyBuildExit.SUCCESS:
+            trace_msg(f"Result of testing '{cmd}': OK")
+        else:
+            trace_msg(f"Testing of '{cmd}' FAILED!")
+            fails.append(f"Command '{cmd}' failed (exit code {res.exit_code}): {res.output}")
+
+        if mod_data:
+            self.clean_up_fake_module(mod_data)
+
+        return fails
