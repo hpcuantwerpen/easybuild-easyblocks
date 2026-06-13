@@ -62,8 +62,13 @@ class EB_Rust(ConfigureMake):
 
         # see https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#what-is-xpy
         # note: ConfigureMake.build_step automatically adds '-j <parallel>'
-        self.cfg['build_cmd'] = "./x.py build"
-        self.cfg['install_cmd'] = "./x.py install -j %(parallel)s"
+        build_cmd = "./x.py build"
+        install_cmd = "./x.py install -j %(parallel)s"
+        if build_option('debug'):
+            build_cmd += ' --verbose'
+            install_cmd += ' --verbose'
+        self.cfg['build_cmd'] = build_cmd
+        self.cfg['install_cmd'] = install_cmd
 
     def _convert_runpaths_to_rpaths(self):
         """
