@@ -38,7 +38,6 @@ from easybuild.tools import LooseVersion
 from easybuild.tools.build_log import EasyBuildError, EasyBuildExit
 from easybuild.tools.config import build_option
 from easybuild.tools.filetools import is_binary, read_file
-from easybuild.tools.modules import get_software_root
 from easybuild.tools.run import run_shell_cmd
 from easybuild.tools.systemtools import X86_64, get_cpu_architecture, get_shared_lib_ext
 from easybuild.tools.utilities import trace_msg
@@ -118,18 +117,13 @@ class EB_Rust(ConfigureMake):
         # see also https://github.com/easybuilders/easybuild-easyconfigs/issues/26232
         rust_version = LooseVersion(self.version)
         if rust_version >= '1.90.0' and get_cpu_architecture() == X86_64:
-            gcc_root = get_software_root('GCCcore')
-            if not gcc_root:
-                raise EasyBuildError("Path to GCC installation could not be determined")
-            gcc_lib_path = os.path.join(gcc_root, 'lib64')
-            link_args = [
-                # inject path to lib64 subdirectory of GCC into RPATH section;
-                # this is sufficient, no need to inject paths of all dependencies
-                # (as is done by RPATH wrappers)
-                f"-Clink-arg=-Wl,-rpath={gcc_lib_path}",
-                # force use of RPATH linking, rather than RUNPATH
-                "-Clink-arg=-Wl,--disable-new-dtags",
-            ]
+
+            lib_paths = [x for x in os.getenv('LIBRARY_PATH', '').split(os.pathsep) if x]
+            link_args = [f"-Clink-arg=-Wl,-rpath={x}" for x in lib_paths]
+
+            # force use of RPATH linking, rather than RUNPATH
+            link_args.append("-Clink-arg=-Wl,--disable-new-dtags")
+
             # we use $RUSTFLAGS_BOOTSTRAP + $RUSTFLAGS_NOT_BOOTSTRAP to inject extra linker flags;
             # Rust 1.93.0+ supports specifying rust.rustflags in bootstrap.toml,
             # see https://github.com/rust-lang/rust/pull/148795,
