@@ -31,14 +31,16 @@ import glob
 import os
 import re
 
+import easybuild.tools.environment as env
 from easybuild.easyblocks.generic.configuremake import ConfigureMake
 from easybuild.framework.easyconfig import CUSTOM
 from easybuild.tools import LooseVersion
 from easybuild.tools.build_log import EasyBuildError, EasyBuildExit
 from easybuild.tools.config import build_option
 from easybuild.tools.filetools import is_binary, read_file
+from easybuild.tools.modules import get_software_root
 from easybuild.tools.run import run_shell_cmd
-from easybuild.tools.systemtools import get_shared_lib_ext
+from easybuild.tools.systemtools import X86_64, get_cpu_architecture, get_shared_lib_ext
 from easybuild.tools.utilities import trace_msg
 
 DEFAULT_CHANNEL = 'stable'
@@ -106,6 +108,38 @@ class EB_Rust(ConfigureMake):
             else:
                 self.log.debug(f"No RUNPATH section found in {runpath_file}")
 
+    def _control_rpath_link_flags(self):
+        """
+        Helper function to set configure options required to control RPATH link flags
+        """
+        # if rust.lld is used as linker, which is the default for Rust 1.90.0+ on x86_64
+        # (see https://blog.rust-lang.org/2025/09/01/rust-lld-on-1.90.0-stable)
+        # we need to make sure that RPATH is set correctly for the binaries of the Rust compiler,
+        # see also https://github.com/easybuilders/easybuild-easyconfigs/issues/26232
+        rust_version = LooseVersion(self.version)
+        if rust_version >= '1.90.0' and get_cpu_architecture() == X86_64:
+            gcc_root = get_software_root('GCCcore')
+            if not gcc_root:
+                raise EasyBuildError("Path to GCC installation could not be determined")
+            gcc_lib_path = os.path.join(gcc_root, 'lib64')
+            link_args = [
+                # inject path to lib64 subdirectory of GCC into RPATH section;
+                # this is sufficient, no need to inject paths of all dependencies
+                # (as is done by RPATH wrappers)
+                f"-Clink-arg=-Wl,-rpath={gcc_lib_path}",
+                # force use of RPATH linking, rather than RUNPATH
+                "-Clink-arg=-Wl,--disable-new-dtags",
+            ]
+            # we use $RUSTFLAGS_BOOTSTRAP + $RUSTFLAGS_NOT_BOOTSTRAP to inject extra linker flags;
+            # Rust 1.93.0+ supports specifying rust.rustflags in bootstrap.toml,
+            # see https://github.com/rust-lang/rust/pull/148795,
+            # but this can't be set easily via --set option of configure script:
+            # the rustflags value is not injected into bootstrap.toml as a list, but as a string,
+            # leading to an error like:
+            # invalid type: string "[-Clink-arg=-Wl,-rpath=...]", expected a sequence for key rust.rustflags
+            env.setvar('RUSTFLAGS_BOOTSTRAP', ' '.join(link_args))
+            env.setvar('RUSTFLAGS_NOT_BOOTSTRAP', ' '.join(link_args))
+
     def configure_step(self):
         """Custom configure step for Rust"""
 
@@ -133,6 +167,9 @@ class EB_Rust(ConfigureMake):
         if 'Ninja' not in build_dep_names:
             self.cfg.update('configopts', "--set=llvm.ninja=false")
 
+        if self.toolchain.use_rpath:
+            self._control_rpath_link_flags()
+
         super().configure_step()
 
         # avoid failure when home directory is an NFS mount,
@@ -145,7 +182,7 @@ class EB_Rust(ConfigureMake):
         """Custom install step for Rust"""
         super().install_step()
 
-        if build_option('rpath'):
+        if self.toolchain.use_rpath:
             self._convert_runpaths_to_rpaths()
 
     def sanity_check_step(self):
