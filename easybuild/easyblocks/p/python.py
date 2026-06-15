@@ -335,7 +335,11 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_v
             # Check for missing (likely wrong) packages names and propose close matches
             if name not in normalized_pip_pkgs:
                 close_matches = difflib.get_close_matches(name, normalized_pip_pkgs.keys())
-                missing_names.append(f"{name} (close matches in 'pip list' output: " + ', '.join(close_matches))
+                if close_matches:
+                    msg = f"{name} (close matches in 'pip list' output: " + ', '.join(close_matches) + ")"
+                else:
+                    msg = f"{name} (no close matches found in 'pip list' output)"
+                missing_names.append(msg)
 
             # Check for missing (likely wrong) package versions
             elif version != normalized_pip_pkgs[name]:
