@@ -421,6 +421,8 @@ class EB_LLVM(CMakeMake):
         except EasyBuildError:
             # File might not exist, hence skip a potential error
             self.log.info("Could not find or open /proc/sys/kernel/yama/ptrace_scope")
+        except ValueError:
+            self.log.info("Could not parse value of ptrace_scope file")
 
         result = run_shell_cmd("sysctl kernel.yama.ptrace_scope", fail_on_error=False, split_stderr=True)
         if result:
