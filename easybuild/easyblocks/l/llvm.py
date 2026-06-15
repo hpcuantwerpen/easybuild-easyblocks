@@ -47,7 +47,7 @@ from easybuild.tools.build_log import EasyBuildError, print_msg, print_warning
 from easybuild.tools.config import ERROR, IGNORE, SEARCH_PATH_LIB_DIRS, build_option
 from easybuild.tools.environment import setvar
 from easybuild.tools.filetools import apply_regex_substitutions, change_dir, copy_dir, adjust_permissions
-from easybuild.tools.filetools import mkdir, remove_file, symlink, which, write_file, remove_dir
+from easybuild.tools.filetools import mkdir, remove_file, symlink, which, write_file, remove_dir, read_file
 from easybuild.tools.modules import MODULE_LOAD_ENV_HEADERS, get_software_root, get_software_version
 from easybuild.tools.run import run_shell_cmd, EasyBuildExit
 from easybuild.tools.systemtools import AARCH32, AARCH64, POWER, RISCV64, X86_64, POWER_LE
@@ -408,6 +408,32 @@ class EB_LLVM(CMakeMake):
         # consider adding them to general_opts instead.
         self._cmakeopts = {}
         self._cfgopts = list(filter(None, self.cfg.get('configopts', '').split()))
+
+    @property
+    def ptrace_scope(self):
+        """
+        Return if ptrace_scope is set to any value high enough to fail
+        LLVMs LLDB and compiler-rt tests
+        """
+        try:
+            ptrace_scope_file = read_file('/proc/sys/kernel/yama/ptrace_scope')
+            return int(ptrace_scope_file)
+        except EasyBuildError:
+            # File might not exist, hence skip a potential error
+            self.log.info("Could not find or open /proc/sys/kernel/yama/ptrace_scope")
+
+        result = run_shell_cmd("sysctl kernel.yama.ptrace_scope", fail_on_error=False, split_stderr=True)
+        if result:
+            try:
+                # Expected output: kernel.yama.ptrace_scope = 3
+                return int(result.stdout.split("=")[-1])
+            except ValueError:
+                self.log.info("Could not determine ptrace_scope value from sysctl output")
+        else:
+            self.log.info("Running sysctl kernel.yama.ptrace_scope failed.")
+
+        self.log.info("Could not determine ptrace_scope. Assuming 0.")
+        return 0
 
     @property
     def gcc_prefix(self):
@@ -1486,6 +1512,12 @@ class EB_LLVM(CMakeMake):
             if 'rocr-runtime' not in self.deps:
                 self.ignore_patterns += ['amdgcn-amd-amdhsa']
                 self.log.warning("ROCr-Runtime not in dependencies, ignoring failing tests for AMDGPU target.")
+            # Ignore compiler-rt and lldb test failures if ptrace_scope is disabled, or higher than 1.
+            # In this case, debuggers and sanitizers may fail to attach to other processes.
+            if self.ptrace_scope > 1:
+                self.ignore_patterns += ['lldb-shell', 'lldb-unit' 'libFuzzer', 'AddressSanitizer',
+                                         'HWAddressSanitizer', 'LeakSanitizer', 'SanitizerCommon', 'UBSan']
+                self.log.warning("ptrace_scope > 1 was found, ignoring failing compiler-rt sanitizer and lldb tests.")
 
             max_failed = self.cfg['test_suite_max_failed']
             if LooseVersion(get_software_version("CMake")) >= '3.19':
