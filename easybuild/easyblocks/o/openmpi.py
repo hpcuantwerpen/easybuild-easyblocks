@@ -109,15 +109,15 @@ class EB_OpenMPI(ConfigureMake):
             # libfabric option renamed in OpenMPI 3.1.0 to ofi
             if dep == 'libfabric' and LooseVersion(self.version) >= LooseVersion('3.1'):
                 opt_name = 'ofi'
-
             # needed in easybuild setup as rocm-llvm and hip live in separate dirs
-            if dep == 'HIP':
+            elif dep == 'HIP':
                 opt_name = 'rocm'
-            if dep == 'UCC-ROCm':
+            elif dep == 'UCC-ROCm':
                 opt_name = 'ucc'
-            if dep == 'UCX-ROCm':
+            elif dep == 'UCX-ROCm':
                 opt_name = 'ucx'
 
+            # check again if option is already used, using new name
             if config_opt_used(opt_name):
                 continue
 
