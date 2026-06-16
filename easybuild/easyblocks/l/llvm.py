@@ -1517,7 +1517,7 @@ class EB_LLVM(CMakeMake):
             # Ignore compiler-rt and lldb test failures if ptrace_scope is disabled, or higher than 1.
             # In this case, debuggers and sanitizers may fail to attach to other processes.
             if self.ptrace_scope > 1:
-                self.ignore_patterns += ['lldb-shell', 'lldb-unit' 'libFuzzer', 'AddressSanitizer',
+                self.ignore_patterns += ['lldb-shell', 'lldb-unit', 'libFuzzer', 'AddressSanitizer',
                                          'HWAddressSanitizer', 'LeakSanitizer', 'SanitizerCommon', 'UBSan']
                 self.log.warning("ptrace_scope > 1 was found, ignoring failing compiler-rt sanitizer and lldb tests.")
 
