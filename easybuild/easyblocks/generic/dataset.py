@@ -79,7 +79,10 @@ class Dataset(Binary):
         change_dir(self.installdir)
         object_storage = os.path.normpath(os.path.join(os.getcwd(), os.pardir, 'object_storage'))
 
-        datafiles = create_index(os.curdir, ignore_dirs=self.cfg['object_storage_ignore_dirs'])
+        if self.cfg['object_storage_ignore_dirs'] and self.installdir in self.cfg['object_storage_ignore_dirs']:
+            datafiles = []
+        else:
+            datafiles = create_index(os.curdir, ignore_dirs=self.cfg['object_storage_ignore_dirs'])
 
         for datafile in datafiles:
             cks = compute_checksum(datafile, checksum_type='sha256')
