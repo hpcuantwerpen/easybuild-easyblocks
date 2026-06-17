@@ -371,7 +371,7 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_v
                 pip_list_warnings.append(msg)
 
     if pip_list_warnings:
-        print_warning(msg, log=log)
+        print_warning('\n'.join(pip_list_warnings), log=log)
 
     if pip_list_errors:
         raise EasyBuildError('\n' + '\n'.join(pip_list_errors))
