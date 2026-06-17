@@ -233,14 +233,16 @@ def normalize_pip(name):
     return REGEX_PIP_NORMALIZE.sub('-', name).lower()
 
 
-def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, strict_check=None):
+def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, check_names_versions=True, strict_check=None):
     """
     Run pip list to verify normalized names and versions of installed Python packages
 
     :param pkgs: list of package tuples (name, version) as specified in the easyconfig
     :param python_cmd: Python command to use (if None, 'python' is used)
     :param unversioned_packages: set of Python packages to exclude in the version existence check
-    :param strict_check: boolean to indicate whether to raise an error if package names or versions don’t match
+    :param check_names_versions: boolean to indicate whether name and versions of Python packages should be checked
+    :param strict_check: boolean to indicate whether to raise an error if package names or versions don’t match,
+                       or emit a warning
     """
 
     log = fancylogger.getLogger('run_pip_list', fname=False)
@@ -318,54 +320,55 @@ def run_pip_list(pkgs, python_cmd=None, unversioned_packages=None, strict_check=
         msg += "required (check the source for a pyproject.toml and see PEP517 for details on that)."
         pip_list_errors.append(msg)
 
-    normalized_pkgs = [(normalize_pip(name), version) for name, version in pkgs]
+    if check_names_versions:
+        normalized_pkgs = [(normalize_pip(name), version) for name, version in pkgs]
 
-    missing_names = []
-    missing_versions = []
+        missing_names = []
+        missing_versions = []
 
-    for name, version in normalized_pkgs:
-        # Skip packages in the unversioned list: they have already been checked
-        if name in normalized_unversioned:
-            continue
+        for name, version in normalized_pkgs:
+            # Skip packages in the unversioned list: they have already been checked
+            if name in normalized_unversioned:
+                continue
 
-        # Skip packages in the zero_pkg_names list: they have already been added to pip_list_errors
-        if name in zero_pkg_names:
-            continue
+            # Skip packages in the zero_pkg_names list: they have already been added to pip_list_errors
+            if name in zero_pkg_names:
+                continue
 
-        # Check for missing (likely wrong) packages names and propose close matches
-        if name not in normalized_pip_pkgs:
-            close_matches = difflib.get_close_matches(name, normalized_pip_pkgs.keys())
-            if close_matches:
-                msg = f"{name} (close matches in 'pip list' output: " + ', '.join(close_matches) + ")"
+            # Check for missing (likely wrong) packages names and propose close matches
+            if name not in normalized_pip_pkgs:
+                close_matches = difflib.get_close_matches(name, normalized_pip_pkgs.keys())
+                if close_matches:
+                    msg = f"{name} (close matches in 'pip list' output: " + ', '.join(close_matches) + ")"
+                else:
+                    msg = f"{name} (no close matches found in 'pip list' output)"
+                missing_names.append(msg)
+
+            # Check for missing (likely wrong) package versions
+            elif version != normalized_pip_pkgs[name]:
+                missing_versions.append(f"{name} {version} (version in 'pip list' output: {normalized_pip_pkgs[name]})")
+
+        log.info(f"Found {len(missing_names)} missing names and {len(missing_versions)} missing versions "
+                 f"out of {len(pkgs)} packages")
+
+        if missing_names:
+            missing_names_str = '\n'.join(missing_names)
+            msg = "The following Python packages were likely specified with a wrong name because they are missing "
+            msg += f"in the 'pip list' output (causes failure if --upload-test-report is set):\n{missing_names_str}"
+            if strict_check:
+                pip_list_errors.append(msg)
             else:
-                msg = f"{name} (no close matches found in 'pip list' output)"
-            missing_names.append(msg)
+                pip_list_warnings.append(msg)
 
-        # Check for missing (likely wrong) package versions
-        elif version != normalized_pip_pkgs[name]:
-            missing_versions.append(f"{name} {version} (version in 'pip list' output: {normalized_pip_pkgs[name]})")
-
-    log.info(f"Found {len(missing_names)} missing names and {len(missing_versions)} missing versions "
-             f"out of {len(pkgs)} packages")
-
-    if missing_names:
-        missing_names_str = '\n'.join(missing_names)
-        msg = "The following Python packages were likely specified with a wrong name because they are missing "
-        msg += f"in the 'pip list' output (causes failure if --upload-test-report is set):\n{missing_names_str}"
-        if strict_check:
-            pip_list_errors.append(msg)
-        else:
-            pip_list_warnings.append(msg)
-
-    if missing_versions:
-        missing_versions_str = '\n'.join(missing_versions)
-        msg = "The following Python packages were likely specified with a wrong version because they have "
-        msg += "another version in the 'pip list' output (causes failure if --upload-test-report is set):\n"
-        msg += missing_versions_str
-        if strict_check:
-            pip_list_errors.append(msg)
-        else:
-            pip_list_warnings.append(msg)
+        if missing_versions:
+            missing_versions_str = '\n'.join(missing_versions)
+            msg = "The following Python packages were likely specified with a wrong version because they have "
+            msg += "another version in the 'pip list' output (causes failure if --upload-test-report is set):\n"
+            msg += missing_versions_str
+            if strict_check:
+                pip_list_errors.append(msg)
+            else:
+                pip_list_warnings.append(msg)
 
     if pip_list_warnings:
         print_warning(msg, log=log)
