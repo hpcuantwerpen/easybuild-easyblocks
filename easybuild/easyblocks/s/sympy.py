@@ -51,7 +51,7 @@ class EB_sympy(PythonPackage):
         msg += "to avoid failing tests due to the temporary directory being a symlinked path..."
         self.log.info(msg)
 
-        super().test_step(self)
+        super().test_step()
 
         # restore original temporary directory
         tempfile.tempdir = original_tmpdir
