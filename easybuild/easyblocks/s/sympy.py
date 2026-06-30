@@ -42,7 +42,6 @@ class EB_sympy(PythonPackage):
 
     def test_step(self):
         """Custom test step for sympy"""
-        
         self.testinstall = True
         if LooseVersion(self.version) >= LooseVersion('1.13.0'):
             self.cfg['runtest'] = 'python -s -m pytest -ra --tb=short sympy'
